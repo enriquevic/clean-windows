@@ -31,6 +31,11 @@ $ChavePix = '992ffd12-4fa7-407e-bde9-204ac017c16a'
 # Pagina de doacao internacional, ex.: 'https://ko-fi.com/seu-usuario'
 # Deixe '' para esconder a opcao.
 $UrlDonativo = ''
+
+# Verificacao de novas versoes: repositorio no formato 'usuario/repo' no GitHub.
+# A cada abertura o programa pergunta ao GitHub qual a ultima Release e, se for mais nova
+# que $Versao, oferece baixar. Deixe '' para desligar a verificacao.
+$RepoUpdate = 'enriquevic/clean-windows'
 # ===================================================================================
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -346,5 +351,55 @@ $btn2.Add_Click({
     Start-Process powershell.exe -ArgumentList $a
     $form.Close()
 })
+
+# ---------------------------------------------------------------------------------
+#  Verifica no GitHub se ha uma versao mais nova. Se houver e o usuario aceitar, baixa
+#  o .zip da Release, extrai na pasta Downloads e abre a pasta para ele rodar. NUNCA
+#  executa nada sozinho. Falha em silencio se estiver offline.
+# ---------------------------------------------------------------------------------
+function Test-Atualizacao {
+    if (-not $RepoUpdate) { return }
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $hdr = @{ 'User-Agent' = 'CleanWindows'; 'Accept' = 'application/vnd.github+json' }
+        $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$RepoUpdate/releases/latest" `
+                    -Headers $hdr -TimeoutSec 6 -ErrorAction Stop
+        $tag = "$($rel.tag_name)".TrimStart('v', 'V')
+        if (-not $tag) { return }
+        $nova = $false
+        try { $nova = [version]$tag -gt [version]$Versao } catch { $nova = ($tag -ne $Versao) }
+        if (-not $nova) { return }
+
+        $q = "Ha uma nova versao do Clean Windows: $tag`nVoce tem a $Versao.`n`nBaixar agora?"
+        if ([System.Windows.Forms.MessageBox]::Show($form, $q, 'Atualizacao disponivel', 'YesNo', 'Information') -ne 'Yes') { return }
+
+        $asset = $rel.assets | Where-Object { $_.name -like '*.zip' } | Select-Object -First 1
+        if (-not $asset) { Start-Process "https://github.com/$RepoUpdate/releases/latest"; return }
+
+        $dl  = [Environment]::GetFolderPath('UserProfile') + '\Downloads'
+        $zip = Join-Path $dl $asset.name
+        $form.Cursor = 'WaitCursor'
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -Headers $hdr -TimeoutSec 180 -ErrorAction Stop
+        $form.Cursor = 'Default'
+
+        $destino = Join-Path $dl ("Clean Windows " + $tag)
+        try {
+            if (Test-Path $destino) { Remove-Item $destino -Recurse -Force -ErrorAction SilentlyContinue }
+            Expand-Archive -LiteralPath $zip -DestinationPath $destino -Force -ErrorAction Stop
+            $sub = Join-Path $destino 'clean-windows'
+            $abrir = if (Test-Path $sub) { $sub } else { $destino }
+            Start-Process explorer.exe $abrir
+            [void][System.Windows.Forms.MessageBox]::Show($form,
+                "Baixado e extraido em:`n$abrir`n`nNessa pasta, rode 'preparar.cmd' (uma vez) e depois 'CleanWindows.exe'.",
+                'Atualizacao baixada', 'OK', 'Information')
+        } catch {
+            Start-Process explorer.exe "/select,`"$zip`""
+            [void][System.Windows.Forms.MessageBox]::Show($form,
+                "Baixado em:`n$zip`n`nExtraia o arquivo e rode 'preparar.cmd' e depois 'CleanWindows.exe'.",
+                'Atualizacao baixada', 'OK', 'Information')
+        }
+    } catch { $form.Cursor = 'Default' }   # offline / limite de API: silencioso
+}
+$form.Add_Shown({ Test-Atualizacao })
 
 [void]$form.ShowDialog()

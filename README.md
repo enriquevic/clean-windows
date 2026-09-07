@@ -102,6 +102,22 @@ Cada item liga/desliga no bloco `$Cfg`, no topo do `freedom-tweaks.ps1`.
 
 ---
 
+## Atualizações automáticas
+
+Toda vez que o `CleanWindows.exe` (ou o `clean-windows.cmd`) abre, ele pergunta ao GitHub
+qual é a última versão publicada. Se houver uma **Release mais nova** que a instalada, aparece
+"Nova versão X disponível — baixar agora?". Se a pessoa disser **Sim**, ele baixa o `.zip` da
+Release, extrai na pasta Downloads e abre a pasta — aí é só rodar o `preparar.cmd` e o
+`CleanWindows.exe` de lá. Nada é executado sozinho, e se o PC estiver offline a verificação
+passa em silêncio.
+
+**Para lançar uma nova versão** (é isso que dispara o aviso em quem já baixou):
+1. Aumente `$Versao` no topo do `clean-windows.ps1` (ex.: `'1.1'`).
+2. Publique uma **Release** no GitHub com a tag correspondente (ex.: `v1.1`) e o `.zip` anexado.
+
+Um commit sozinho não avisa ninguém — o que os clientes comparam é o número da Release.
+Para desligar a verificação, deixe `$RepoUpdate = ''`.
+
 ## Antivírus
 
 Um antivírus **pode marcar** estes scripts — é um falso positivo previsível: eles fazem o
