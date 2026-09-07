@@ -20,7 +20,7 @@ param([switch]$AllowFixedDisk)
 # ===================================================================================
 #  CONFIGURACAO DO AUTOR  -  preencha aqui e nada mais precisa mudar
 # ===================================================================================
-$Versao = '1.1'
+$Versao = '1.2'
 
 # Para onde vai o feedback dos usuarios (abre o programa de e-mail da pessoa).
 $EmailFeedback = 'roothub.softwares@gmail.com'
