@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  autounattend.xml - instalacao automatica do Windows 11 (kit "gaming" pessoal)
+
+  O que ele faz:
+    * Idioma/teclado pt-BR (ABNT2) e fuso de Brasilia, sem perguntar
+    * Pula EULA, telas de conta Microsoft, Wi-Fi obrigatorio e "configuracoes expressas"
+      (ProtectYourPC=3 = todas as opcoes de privacidade do OOBE desligadas)
+    * Cria a conta local "Freedom" (Administrador, sem senha) -> troque abaixo se quiser
+    * Desliga telemetria do proprio instalador e o Dynamic Update
+    * No primeiro logon executa C:\Windows\Setup\Scripts\freedom-tweaks.ps1 e reinicia
+
+  O que ele NAO faz de proposito:
+    * NAO particiona/formata disco automaticamente (voce escolhe o disco na tela do
+      instalador, como sempre). Isso evita apagar o disco errado.
+
+  Se sua ISO NAO for pt-BR, troque os valores pt-BR / 0416:00010416 pelo idioma da
+  ISO (ex.: en-US e 0409:00000409), senao o instalador pode falhar.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+
+  <!-- ============================ Fase 1: instalador (WinPE) ============================ -->
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>pt-BR</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>0416:00010416</InputLocale>
+      <SystemLocale>pt-BR</SystemLocale>
+      <UILanguage>pt-BR</UILanguage>
+      <UserLocale>pt-BR</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <!-- Sem telemetria do instalador e sem baixar "atualizacoes dinamicas" durante o setup -->
+      <Diagnostics>
+        <OptIn>false</OptIn>
+      </Diagnostics>
+      <DynamicUpdate>
+        <Enable>false</Enable>
+        <WillShowUI>Never</WillShowUI>
+      </DynamicUpdate>
+
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <!--
+          Chave GENERICA de instalacao do Windows 11 Pro (publicada pela Microsoft). Ela so
+          serve para o instalador nao perguntar a chave; NAO ativa o Windows. Depois da
+          instalacao a licenca digital do seu PC ativa sozinha, ou voce digita a sua chave.
+          Se voce gerou a ISO com -Edition "Windows 11 Home", troque por:
+              YTMG3-N6DKC-DKB77-7M9GH-8HVX7
+          Ou apague o bloco <ProductKey> inteiro e clique em "Nao tenho a chave" no instalador.
+        -->
+        <ProductKey>
+          <Key>VK7JG-NPHTM-C97JM-9MPGT-3V66T</Key>
+          <WillShowUI>OnError</WillShowUI>
+        </ProductKey>
+      </UserData>
+
+      <!--
+        OPCIONAL - SOMENTE PARA MAQUINA VIRTUAL: particiona e formata o DISCO 0 sozinho
+        (APAGA TUDO nele) e instala sem perguntar nada. NUNCA habilite isto num PC real
+        com mais de um disco sem ter certeza absoluta de qual e o disco 0.
+        Para usar, remova as marcas de comentario do bloco abaixo.
+
+      <DiskConfiguration>
+        <Disk wcm:action="add">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          <CreatePartitions>
+            <CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>300</Size></CreatePartition>
+            <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+            <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Format>FAT32</Format><Label>System</Label></ModifyPartition>
+            <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Format>NTFS</Format><Label>Windows</Label><Letter>C</Letter></ModifyPartition>
+          </ModifyPartitions>
+        </Disk>
+      </DiskConfiguration>
+      <ImageInstall>
+        <OSImage>
+          <InstallTo><DiskID>0</DiskID><PartitionID>3</PartitionID></InstallTo>
+        </OSImage>
+      </ImageInstall>
+      -->
+
+      <!--
+        OPCIONAL: instalar em PC sem TPM 2.0 / Secure Boot / CPU "nao suportada".
+        Para um PC de jogos NAO recomendo (Valorant, FACEIT e outros anti-cheats exigem
+        TPM 2.0 + Secure Boot no Windows 11). Se precisar mesmo, remova as marcas de
+        comentario do bloco abaixo.
+
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg.exe add HKLM\SYSTEM\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Path>reg.exe add HKLM\SYSTEM\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <Path>reg.exe add HKLM\SYSTEM\Setup\LabConfig /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>4</Order>
+          <Path>reg.exe add HKLM\SYSTEM\Setup\LabConfig /v BypassCPUCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+      -->
+    </component>
+  </settings>
+
+  <!-- ============================ Fase 2: specialize ============================ -->
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>GAMING-PC</ComputerName>
+      <TimeZone>E. South America Standard Time</TimeZone>
+    </component>
+
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+        <!-- Permite terminar o OOBE sem internet (evita a tela "Vamos conectar voce a uma rede") -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg.exe add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+    </component>
+  </settings>
+
+  <!-- ============================ Fase 3: OOBE / primeiro logon ============================ -->
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>0416:00010416</InputLocale>
+      <SystemLocale>pt-BR</SystemLocale>
+      <UILanguage>pt-BR</UILanguage>
+      <UserLocale>pt-BR</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <ProtectYourPC>3</ProtectYourPC>
+      </OOBE>
+
+      <!-- Conta local. Para senha, coloque o texto em <Value> e mantenha PlainText=true. -->
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>Freedom</Name>
+            <DisplayName>Freedom</DisplayName>
+            <Group>Administrators</Group>
+            <Password>
+              <Value></Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+
+      <!--
+        Roda uma unica vez, no primeiro logon, com privilegios de administrador.
+        Procura o script em C:\Windows\Setup\Scripts (copiado do $OEM$ da midia) e, se nao
+        estiver la, na pasta \Scripts de qualquer DVD/pendrive (caso do kit.iso no VirtualBox).
+      -->
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Description>Tweaks gaming / privacidade</Description>
+          <CommandLine>cmd.exe /c if exist C:\Windows\Setup\Scripts\freedom-tweaks.ps1 (powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Windows\Setup\Scripts\freedom-tweaks.ps1 -Reboot) else (for %d in (D E F G H I) do @if exist %d:\Scripts\freedom-tweaks.ps1 powershell.exe -NoProfile -ExecutionPolicy Bypass -File %d:\Scripts\freedom-tweaks.ps1 -Reboot)</CommandLine>
+          <RequiresUserInput>false</RequiresUserInput>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+</unattend>
