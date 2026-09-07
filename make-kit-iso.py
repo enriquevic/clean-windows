@@ -61,7 +61,7 @@ for name, short in SCRIPTS.items():
 EXTRA = {"autounattend.xml": "AUTOUNAT.XML", "criar-pendrive.ps1": "CRIARPEN.PS1",
          "criar-pendrive.cmd": "CRIARPEN.CMD", "build-iso.ps1": "BUILDISO.PS1",
          "clean-windows.ps1": "CLEANWIN.PS1", "clean-windows.cmd": "CLEANWIN.CMD",
-         "clean-windows-teste-vm.cmd": "CLEANTVM.CMD", "preparar.ps1": "PREPARAR.PS1",
+         "preparar.ps1": "PREPARAR.PS1",
          "preparar.cmd": "PREPARAR.CMD", "CleanWindowsLauncher.cs": "LAUNCHER.CS",
          "CleanWindows.manifest": "CLEANWIN.MAN", "CleanWindows.ico": "CLEANWIN.ICO"}
 for name, short in EXTRA.items():
