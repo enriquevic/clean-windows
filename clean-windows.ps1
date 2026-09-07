@@ -62,6 +62,93 @@ $Pendriv = Join-Path $KitDir 'criar-pendrive.ps1'
 #  Janela de progresso: roda o script escondido e mostra o log aqui dentro, para o
 #  usuario nunca ver a janela preta do PowerShell.
 # ---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
+#  Termo de uso: aparece ANTES de limpar o Windows ou criar o pendrive. So prossegue
+#  se o usuario marcar "Li e concordo". Mostrado uma vez por sessao.
+# ---------------------------------------------------------------------------------
+$script:TermosOK = $false
+function Confirmar-Termos {
+    if ($script:TermosOK) { return $true }
+
+    $texto = @"
+TERMO DE USO E RESPONSABILIDADE - Clean Windows $Versao
+
+O QUE ESTE PROGRAMA FAZ
+O Clean Windows remove do Windows os aplicativos e servicos que a Microsoft usa para
+observar o uso do computador (telemetria, coleta de dados, Copilot, Recall, Widgets,
+apps promovidos e OneDrive). Esses componentes tambem consomem recursos e deixam o
+computador mais lento. Ao remove-los, o programa deixa o sistema mais leve e ajuda a
+proteger a sua privacidade.
+
+O QUE NAO E ALTERADO
+Microsoft Defender, Secure Boot, TPM, Windows Update e a Microsoft Store continuam
+ligados. O programa nao desativa a sua protecao.
+
+RESPONSABILIDADE
+A instalacao e a aplicacao destes ajustes sao feitas por sua conta e risco. A
+responsabilidade e inteiramente do usuario. O programa e fornecido "como esta", sem
+qualquer garantia. Os autores nao se responsabilizam por perda de dados, falhas do
+sistema ou qualquer consequencia decorrente do uso.
+
+RECOMENDACOES
+- Faca backup dos seus arquivos importantes antes de continuar.
+- Ao LIMPAR ESTE Windows, deixe marcada a criacao de um ponto de restauracao.
+- Ao CRIAR PENDRIVE, lembre-se de que o pendrive sera totalmente apagado, e que a
+  instalacao formata a particao de destino escolhida.
+
+Projeto independente, NAO afiliado nem endossado pela Microsoft. Windows e marca
+registrada da Microsoft Corporation.
+
+Ao marcar "Li e concordo" e clicar em Continuar, voce declara estar ciente de tudo acima.
+"@
+
+    $t = New-Object System.Windows.Forms.Form
+    $t.Text = 'Termo de uso - Clean Windows'
+    $t.ClientSize = New-Object System.Drawing.Size(640, 500)
+    $t.StartPosition = 'CenterParent'
+    $t.FormBorderStyle = 'FixedDialog'
+    $t.MaximizeBox = $false; $t.MinimizeBox = $false
+    $t.BackColor = [System.Drawing.Color]::White
+
+    $tb = New-Object System.Windows.Forms.TextBox
+    $tb.Multiline = $true; $tb.ReadOnly = $true; $tb.ScrollBars = 'Vertical'; $tb.WordWrap = $true
+    $tb.Text = ($texto -replace "`r`n", "`r`n") -replace "(?<!`r)`n", "`r`n"
+    $tb.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
+    $tb.BackColor = [System.Drawing.Color]::White
+    $tb.Location = New-Object System.Drawing.Point(18, 16)
+    $tb.Size = New-Object System.Drawing.Size(604, 380)
+    $t.Controls.Add($tb)
+
+    $ck = New-Object System.Windows.Forms.CheckBox
+    $ck.Text = 'Li e concordo com o termo de uso e assumo a responsabilidade.'
+    $ck.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
+    $ck.Location = New-Object System.Drawing.Point(18, 406)
+    $ck.Size = New-Object System.Drawing.Size(604, 24)
+    $t.Controls.Add($ck)
+
+    $ok = New-Object System.Windows.Forms.Button
+    $ok.Text = 'Continuar'; $ok.Enabled = $false
+    $ok.Location = New-Object System.Drawing.Point(432, 452); $ok.Size = New-Object System.Drawing.Size(120, 32)
+    $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $t.Controls.Add($ok)
+
+    $no = New-Object System.Windows.Forms.Button
+    $no.Text = 'Cancelar'
+    $no.Location = New-Object System.Drawing.Point(560, 452); $no.Size = New-Object System.Drawing.Size(64, 32)
+    $no.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $t.Controls.Add($no)
+
+    $ck.Add_CheckedChanged({ $ok.Enabled = $ck.Checked })
+    $t.AcceptButton = $ok; $t.CancelButton = $no
+
+    $r = $t.ShowDialog($form)
+    if ($r -eq [System.Windows.Forms.DialogResult]::OK -and $ck.Checked) {
+        $script:TermosOK = $true
+        return $true
+    }
+    return $false
+}
+
 function Show-Progresso {
     param([string]$Titulo, [string]$Exe, [string[]]$Argumentos, [string]$LogPath)
 
@@ -321,6 +408,7 @@ $btnDoar.Add_Click({
 
 # ------------------------------------------------------------------ acoes
 $btn1.Add_Click({
+    if (-not (Confirmar-Termos)) { return }
     if (-not (Test-Path $Tweaks)) {
         [void][System.Windows.Forms.MessageBox]::Show($form, "Nao encontrei o freedom-tweaks.ps1 em:`n$KitDir", 'Clean Windows', 'OK', 'Error')
         return
@@ -342,6 +430,7 @@ $btn1.Add_Click({
 })
 
 $btn2.Add_Click({
+    if (-not (Confirmar-Termos)) { return }
     if (-not (Test-Path $Pendriv)) {
         [void][System.Windows.Forms.MessageBox]::Show($form, "Nao encontrei o criar-pendrive.ps1 em:`n$KitDir", 'Clean Windows', 'OK', 'Error')
         return

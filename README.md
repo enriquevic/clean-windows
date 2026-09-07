@@ -102,6 +102,14 @@ Cada item liga/desliga no bloco `$Cfg`, no topo do `freedom-tweaks.ps1`.
 
 ---
 
+## Termo de uso
+
+Antes de **limpar o Windows** ou **criar o pendrive**, o programa mostra um termo de uso que
+o usuário precisa ler e aceitar (marcar "Li e concordo"). O termo deixa claro o que o
+programa faz — remove o que a Microsoft usa para observar o uso e que deixa o PC pesado, e
+ajuda a proteger a privacidade — e que a **responsabilidade é inteiramente do usuário**.
+Sem o aceite, nada é executado.
+
 ## Atualizações automáticas
 
 Toda vez que o `CleanWindows.exe` (ou o `clean-windows.cmd`) abre, ele pergunta ao GitHub
