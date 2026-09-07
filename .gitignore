@@ -1,0 +1,9 @@
+# Artefatos gerados na maquina (nao entram no codigo-fonte)
+CleanWindows.exe
+SHA256SUMS.txt
+kit.iso
+
+# Temporarios do Windows/editor
+*.tmp
+Thumbs.db
+desktop.ini
