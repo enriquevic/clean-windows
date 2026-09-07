@@ -16,6 +16,21 @@ Dá para usar de dois jeitos:
 > **Baixar:** pegue o `clean-windows-1.1.zip` na aba **[Releases](../../releases)**, extraia
 > numa pasta e siga o passo a passo abaixo.
 
+## O que voce ganha
+
+- **Mais leve:** menos programas e servicos rodando em segundo plano, menos RAM ocupada.
+- **Mais rapido no dia a dia:** sem transparencia, sombras e animacoes que pesam na tela.
+- **Mais privado:** sai a telemetria, o Copilot/Recall, os apps promovidos e o OneDrive.
+- **Menos incomodo:** sem propaganda no Iniciar, sem Widgets, e (opcional) sem o popup de
+  administrador a cada acao.
+- **Se mantem limpo:** apos uma atualizacao do Windows que reponha o bloatware, o programa
+  reaplica os ajustes sozinho.
+- **Voce ve o resultado:** ao final, o programa mostra **quanto o seu Windows ficou mais
+  enxuto** (processos, RAM, apps e servicos, antes e depois).
+
+Defender, Secure Boot, TPM, Windows Update e a Microsoft Store continuam **ligados** — a sua
+protecao nao e desativada.
+
 ---
 
 ## Como começar
@@ -97,6 +112,11 @@ travarem anti-cheats de jogos. A Segurança do Windows continua ativa.
 
 **Ajustes de jogos:** Game Mode ligado, Game DVR desligado, HAGS, plano de energia de alto
 desempenho (em notebook, ajuste `PowerPlanUltimate = $false`), mouse sem aceleração.
+
+**Leveza visual:** desliga transparencia, sombras e animacoes (mantendo o ClearType das
+fontes). **UAC:** opcionalmente (`SilenciarUAC`), contas de administrador elevam sem o popup
+"Deseja permitir..." — isso **nao desliga o UAC**: a protecao, a sandbox de apps e a
+Microsoft Store continuam funcionando.
 
 Cada item liga/desliga no bloco `$Cfg`, no topo do `freedom-tweaks.ps1`.
 

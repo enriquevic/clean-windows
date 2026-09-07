@@ -446,6 +446,105 @@ $btn2.Add_Click({
 #  o .zip da Release, extrai na pasta Downloads e abre a pasta para ele rodar. NUNCA
 #  executa nada sozinho. Falha em silencio se estiver offline.
 # ---------------------------------------------------------------------------------
+function Get-Metricas {
+    $ram = 0
+    try { $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+          $ram = [math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1024) } catch {}
+    $ini = 0
+    foreach ($rk in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+                    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run') {
+        try { $ini += @((Get-Item $rk -ErrorAction Stop).Property).Count } catch {}
+    }
+    [pscustomobject]@{
+        Processos = @(Get-Process -ErrorAction SilentlyContinue).Count
+        RamUsoMB  = [int]$ram
+        Servicos  = @(Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }).Count
+        Appx      = @(Get-AppxPackage -ErrorAction SilentlyContinue).Count
+        Tarefas   = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Ready' }).Count
+        Inicio    = $ini
+    }
+}
+
+# Mostra a comparacao de leveza (antes x depois) uma unica vez, apos a limpeza + reinicio.
+function Show-Comparacao {
+    $CW = 'HKLM:\SOFTWARE\CleanWindows'
+    $flag = try { (Get-ItemProperty $CW -Name MostrarComparacao -ErrorAction Stop).MostrarComparacao } catch { 0 }
+    if ($flag -ne 1) { return }
+    $a = try { Get-ItemProperty $CW -ErrorAction Stop } catch { $null }
+    if (-not $a -or $null -eq $a.Antes_Processos) { return }
+    $d = Get-Metricas
+
+    $itens = @(
+        @{ Rot = 'Processos em segundo plano'; Ini = [int]$a.Antes_Processos; Fim = $d.Processos }
+        @{ Rot = 'RAM em uso (ociosa)';        Ini = [int]$a.Antes_RamMB;     Fim = $d.RamUsoMB; Un = ' MB' }
+        @{ Rot = 'Apps instalados';            Ini = [int]$a.Antes_Appx;      Fim = $d.Appx }
+        @{ Rot = 'Servicos em execucao';       Ini = [int]$a.Antes_Servicos;  Fim = $d.Servicos }
+        @{ Rot = 'Itens de inicializacao';     Ini = [int]$a.Antes_Inicio;    Fim = $d.Inicio }
+        @{ Rot = 'Tarefas agendadas ativas';   Ini = [int]$a.Antes_Tarefas;   Fim = $d.Tarefas }
+    )
+    $reducoes = @()
+    foreach ($i in $itens) {
+        if ($i.Ini -gt 0) {
+            $pct = [math]::Round((($i.Ini - $i.Fim) / $i.Ini) * 100)
+            $i.Pct = $pct
+            if ($pct -gt 0) { $reducoes += $pct }
+        } else { $i.Pct = 0 }
+    }
+    $geral = if ($reducoes.Count) { [math]::Round(($reducoes | Measure-Object -Average).Average) } else { 0 }
+
+    $w = New-Object System.Windows.Forms.Form
+    $w.Text = 'Resultado da limpeza - Clean Windows'
+    $w.ClientSize = New-Object System.Drawing.Size(560, 430)
+    $w.StartPosition = 'CenterScreen'
+    $w.FormBorderStyle = 'FixedDialog'; $w.MaximizeBox = $false; $w.MinimizeBox = $false
+    $w.BackColor = [System.Drawing.Color]::White
+
+    $h = New-Object System.Windows.Forms.Label
+    $h.Text = "Seu Windows ficou ~$geral% mais enxuto"
+    $h.Font = New-Object System.Drawing.Font('Segoe UI', 15, [System.Drawing.FontStyle]::Bold)
+    $h.ForeColor = [System.Drawing.Color]::FromArgb(0x1B, 0x8A, 0x4D)
+    $h.Location = New-Object System.Drawing.Point(24, 20); $h.Size = New-Object System.Drawing.Size(520, 34)
+    $w.Controls.Add($h)
+
+    $s2 = New-Object System.Windows.Forms.Label
+    $s2.Text = 'Comparacao entre antes e depois da limpeza:'
+    $s2.ForeColor = [System.Drawing.Color]::FromArgb(96, 96, 96)
+    $s2.Location = New-Object System.Drawing.Point(24, 58); $s2.Size = New-Object System.Drawing.Size(520, 20)
+    $w.Controls.Add($s2)
+
+    $lv = New-Object System.Windows.Forms.ListView
+    $lv.View = 'Details'; $lv.FullRowSelect = $true; $lv.GridLines = $true; $lv.HeaderStyle = 'Nonclickable'
+    $lv.Location = New-Object System.Drawing.Point(24, 86); $lv.Size = New-Object System.Drawing.Size(512, 260)
+    [void]$lv.Columns.Add('Indicador', 250)
+    [void]$lv.Columns.Add('Antes', 80, 'Center')
+    [void]$lv.Columns.Add('Depois', 80, 'Center')
+    [void]$lv.Columns.Add('Reducao', 90, 'Center')
+    foreach ($i in $itens) {
+        $un = if ($i.Un) { $i.Un } else { '' }
+        $row = New-Object System.Windows.Forms.ListViewItem($i.Rot)
+        [void]$row.SubItems.Add("$($i.Ini)$un")
+        [void]$row.SubItems.Add("$($i.Fim)$un")
+        [void]$row.SubItems.Add($(if ($i.Pct -gt 0) { "-$($i.Pct)%" } elseif ($i.Pct -lt 0) { "+$([math]::Abs($i.Pct))%" } else { '~' }))
+        [void]$lv.Items.Add($row)
+    }
+    $w.Controls.Add($lv)
+
+    $n = New-Object System.Windows.Forms.Label
+    $n.Text = 'A leveza vem de remover o que roda em segundo plano; o desempenho real tambem depende do seu hardware.'
+    $n.ForeColor = [System.Drawing.Color]::FromArgb(120, 120, 120)
+    $n.Font = New-Object System.Drawing.Font('Segoe UI', 8)
+    $n.Location = New-Object System.Drawing.Point(24, 352); $n.Size = New-Object System.Drawing.Size(512, 34)
+    $w.Controls.Add($n)
+
+    $ok = New-Object System.Windows.Forms.Button
+    $ok.Text = 'Fechar'; $ok.Location = New-Object System.Drawing.Point(456, 392); $ok.Size = New-Object System.Drawing.Size(80, 28)
+    $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $w.Controls.Add($ok); $w.AcceptButton = $ok
+
+    try { Set-ItemProperty -Path $CW -Name MostrarComparacao -Value 0 -ErrorAction SilentlyContinue } catch {}
+    [void]$w.ShowDialog($form)
+}
+
 function Test-Atualizacao {
     if (-not $RepoUpdate) { return }
     try {
@@ -489,6 +588,6 @@ function Test-Atualizacao {
         }
     } catch { $form.Cursor = 'Default' }   # offline / limite de API: silencioso
 }
-$form.Add_Shown({ Test-Atualizacao })
+$form.Add_Shown({ Test-Atualizacao; Show-Comparacao })
 
 [void]$form.ShowDialog()

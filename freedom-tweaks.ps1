@@ -65,6 +65,15 @@ $Cfg = @{
                                      # restauracao e roda este script de novo. Atualizacoes de
                                      # versao reinstalam Copilot/Widgets/OneDrive e religam a
                                      # telemetria. Desligue com $false (e o script remove a tarefa).
+    DesempenhoVisual       = $true   # deixa o Windows mais leve: sem transparencia da barra, sem
+                                     # sombras e sem animacoes (janelas, menus, dicas). Mantem o
+                                     # ClearType (nitidez das fontes). Vale para o usuario atual e
+                                     # para novos usuarios.
+    SilenciarUAC           = $true   # tira o popup "Deseja permitir..." para contas de ADMIN: elas
+                                     # elevam sem perguntar. O UAC continua LIGADO (nao desativa a
+                                     # protecao/sandbox nem a Loja). $false mantem o popup.
+    MedirDesempenho        = $true   # mede leveza (processos, RAM, apps, servicos...) ANTES da
+                                     # limpeza e guarda, p/ o programa mostrar a comparacao depois.
 }
 
 # Apps removidos (online). Nomes inexistentes sao ignorados.
@@ -202,8 +211,46 @@ function Disable-Task([string]$fullPath) {
     }
 }
 
+# Mede indicadores de "leveza" do sistema (usado para o antes/depois).
+function Get-Metricas {
+    $ram = 0
+    try { $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+          $ram = [math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1024) } catch {}
+    $ini = 0
+    foreach ($rk in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+                    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run') {
+        try { $ini += @((Get-Item $rk -ErrorAction Stop).Property).Count } catch {}
+    }
+    [pscustomobject]@{
+        Processos = @(Get-Process -ErrorAction SilentlyContinue).Count
+        RamUsoMB  = [int]$ram
+        Servicos  = @(Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }).Count
+        Appx      = @(Get-AppxPackage -ErrorAction SilentlyContinue).Count
+        Tarefas   = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Ready' }).Count
+        Inicio    = $ini
+    }
+}
+
 Log "freedom-tweaks.ps1 iniciado por $env:USERNAME em $env:COMPUTERNAME" 'Green'
 $P = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows'
+
+# ---- Medicao ANTES (para o programa mostrar a comparacao de leveza depois) ----
+if ($Cfg.MedirDesempenho) {
+    Section "Medindo o desempenho antes da limpeza"
+    try {
+        $mAntes = Get-Metricas
+        $CW = 'HKLM:\SOFTWARE\CleanWindows'
+        Set-Reg $CW Antes_Processos $mAntes.Processos
+        Set-Reg $CW Antes_RamMB     $mAntes.RamUsoMB
+        Set-Reg $CW Antes_Servicos  $mAntes.Servicos
+        Set-Reg $CW Antes_Appx      $mAntes.Appx
+        Set-Reg $CW Antes_Tarefas   $mAntes.Tarefas
+        Set-Reg $CW Antes_Inicio    $mAntes.Inicio
+        Set-Reg $CW Antes_Quando    (Get-Date -Format 's') 'String'
+        Set-Reg $CW MostrarComparacao 1
+        Log "  antes: $($mAntes.Processos) processos, $($mAntes.RamUsoMB) MB de RAM em uso, $($mAntes.Appx) apps"
+    } catch { Log "  ! nao consegui medir: $($_.Exception.Message)" 'Yellow' }
+}
 
 if ($RestorePoint) {
     Section "Ponto de restauracao"
@@ -302,6 +349,22 @@ function Apply-UserTweaks([string]$U) {
         Set-Reg "$U\Software\Microsoft\Windows\CurrentVersion\Search" SearchboxTaskbarMode 1   # busca so icone
         # Menu de contexto classico (botao direito completo, sem "Mostrar mais opcoes")
         Set-Reg "$U\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" '(Default)' '' String
+    }
+
+    if ($Cfg.DesempenhoVisual) {
+        # Sem transparencia (barra/menus): mais leve para a GPU
+        Set-Reg "$U\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" EnableTransparency 0
+        # Sem animacoes de janelas, barra, listas e menus (mantem ClearType)
+        Set-Reg "$U\Control Panel\Desktop\WindowMetrics" MinAnimate '0' String
+        Set-Reg "$U\Control Panel\Desktop" MenuShowDelay '0' String
+        Set-Reg "$U\Control Panel\Desktop" DragFullWindows '1' String
+        Set-Reg $Adv TaskbarAnimations 0
+        Set-Reg $Adv ListviewAlphaSelect 0
+        Set-Reg $Adv ListviewShadow 0
+        Set-Reg "$U\Software\Microsoft\Windows\DWM" EnableAeroPeek 0
+        # Mascara de "melhor desempenho" que desliga animacoes/fades mas mantem a suavizacao
+        # de fontes (ClearType). Bytes conhecidos do Windows para esse conjunto.
+        Set-Reg "$U\Control Panel\Desktop" UserPreferencesMask ([byte[]](0x90,0x12,0x03,0x80,0x10,0x00,0x00,0x00)) Binary
     }
 
     if ($Cfg.RemoveOneDrive) {
@@ -468,6 +531,17 @@ if ($Cfg.DisableHibernation) {
 }
 
 if ($Cfg.DisableSysMain) { Section "SysMain"; Disable-Svc 'SysMain' }
+
+if ($Cfg.SilenciarUAC) {
+    Section "UAC (sem popup para administrador, protecao mantida)"
+    $sys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    # 0 = elevar sem perguntar (contas de admin). NAO desligamos o UAC (EnableLUA fica 1),
+    # entao sandbox de apps, integridade e a Microsoft Store continuam funcionando.
+    Set-Reg $sys ConsentPromptBehaviorAdmin 0
+    Set-Reg $sys PromptOnSecureDesktop 0
+    Set-Reg $sys EnableLUA 1
+    Log "  admin eleva sem popup; UAC continua ligado (protecao mantida)"
+}
 
 if ($Cfg.PreventDeviceEncryption) {
     Section "Criptografia automatica (BitLocker/Device Encryption)"
