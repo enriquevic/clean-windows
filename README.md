@@ -2,7 +2,7 @@
   <img src="CleanWindows-preview.png" width="140" alt="Clean Windows">
 </p>
 
-# Clean Windows 1.2
+# Clean Windows 1.3
 
 Monte a **sua** edição enxuta do Windows 11, a partir da ISO **oficial da Microsoft**:
 sem bloatware, sem telemetria, sem Copilot/Recall/Widgets/OneDrive, com os ajustes de
@@ -13,7 +13,7 @@ Dá para usar de dois jeitos:
 - **Limpar o Windows que já está instalado** nesta máquina (nada é formatado); ou
 - **Criar um pendrive** que instala um Windows 11 já limpo do zero em qualquer PC.
 
-> **Baixar:** pegue o `clean-windows-1.2.zip` na aba **[Releases](../../releases)**, extraia
+> **Baixar:** pegue o `clean-windows-1.3.zip` na aba **[Releases](../../releases)**, extraia
 > numa pasta e siga o passo a passo abaixo.
 
 ## O que voce ganha
@@ -35,7 +35,7 @@ protecao nao e desativada.
 
 ## Como começar
 
-1. Extraia o `clean-windows-1.2.zip` numa pasta (ex.: `C:\Clean Windows`).
+1. Extraia o `clean-windows-1.3.zip` numa pasta (ex.: `C:\Clean Windows`).
 2. Dê **dois cliques em `preparar.cmd`** — só na primeira vez. Ele desbloqueia os arquivos
    e cria o **`CleanWindows.exe`** (usando o compilador que já vem no Windows; nada é baixado).
 3. Dê **dois cliques em `CleanWindows.exe`**. Abre um menu com duas opções:
