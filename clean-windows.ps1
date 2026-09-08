@@ -486,13 +486,15 @@ $btnReativar.Add_Click({
            "- Religa transparencia, sombras e animacoes.`n" +
            "- Reativa servicos, tarefas, telemetria e o popup do administrador.`n" +
            "- Tenta reinstalar o OneDrive e os apps (pela Loja).`n`n" +
-           "O Windows vai ficar MAIS PESADO. Ao final, mostramos quanto.`n`nContinuar?"
+           "O Windows vai ficar MAIS PESADO.`n`n" +
+           "Reinicie o PC ao terminar; ao reabrir o programa, mostramos quanto ficou mais pesado.`n`nContinuar?"
     if ([System.Windows.Forms.MessageBox]::Show($form, $txt, 'Reativar Windows padrao', 'YesNo', 'Warning', 'Button2') -ne 'Yes') { return }
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$restore`"", '-Quiet')
     $form.Hide()
     Show-Progresso -Titulo 'Reativando o Windows padrao' -Exe 'powershell.exe' -Argumentos $a `
                    -LogPath "$env:SystemRoot\Setup\Scripts\freedom-restore.log"
-    Show-Restauracao
+    # A comparacao (quanto ficou mais pesado) e medida ao vivo na proxima abertura, DEPOIS do
+    # reinicio - so ai os servicos religados estao rodando de verdade. (Add_Shown -> Show-Restauracao)
     $form.Close()
 })
 
@@ -539,12 +541,11 @@ function Show-Comparacao {
     if ($flag -ne 1) { return }
     $a = try { Get-ItemProperty $CW -ErrorAction Stop } catch { $null }
     if (-not $a -or $null -eq $a.Antes_Processos) { return }
-    # "depois" = medida no FIM da limpeza (Limpo_*), na mesma janela de tempo do "antes",
-    # para nao pegar flutuacao. Se faltar, mede agora.
-    if ($null -ne $a.Limpo_Processos) {
-        $d = [pscustomobject]@{ Processos=[int]$a.Limpo_Processos; RamUsoMB=[int]$a.Limpo_RamMB
-            Servicos=[int]$a.Limpo_Servicos; Appx=[int]$a.Limpo_Appx; Tarefas=[int]$a.Limpo_Tarefas; Inicio=[int]$a.Limpo_Inicio }
-    } else { $d = Get-Metricas }
+    # "depois" = medido AGORA, na 1a abertura do menu APOS o reinicio da limpeza. So aqui o
+    # ganho e real: os servicos ja nao sobem, os apps sumiram e a RAM/processos caem. O Limpo_*
+    # salvo no fim do script era ANTES do reinicio (servicos ainda rodando), entao mostrava
+    # quase nenhuma reducao - por isso passamos a medir ao vivo.
+    $d = Get-Metricas
 
     $itens = @(
         @{ Rot = 'Processos em segundo plano'; Ini = [int]$a.Antes_Processos; Fim = $d.Processos }
@@ -627,12 +628,15 @@ function Show-Restauracao {
     $r = try { Get-ItemProperty $CW -ErrorAction Stop } catch { $null }
     if (-not $r -or $null -eq $r.R_Limpo_Processos) { return }
 
+    # "pesado" medido AGORA (apos reativar + reiniciar) - reflete o estado real, ja com os
+    # servicos rodando de novo. Comparado com o "limpo" salvo no inicio do freedom-restore.
+    $pv = Get-Metricas
     $itens = @(
-        @{ Rot = 'Processos em segundo plano'; L = [int]$r.R_Limpo_Processos; P = [int]$r.R_Pesado_Processos }
-        @{ Rot = 'RAM em uso (ociosa)';        L = [int]$r.R_Limpo_RamMB;     P = [int]$r.R_Pesado_RamMB; Un = ' MB' }
-        @{ Rot = 'Servicos em execucao';       L = [int]$r.R_Limpo_Servicos;  P = [int]$r.R_Pesado_Servicos }
-        @{ Rot = 'Tarefas agendadas ativas';   L = [int]$r.R_Limpo_Tarefas;   P = [int]$r.R_Pesado_Tarefas }
-        @{ Rot = 'Apps instalados';            L = [int]$r.R_Limpo_Appx;      P = [int]$r.R_Pesado_Appx }
+        @{ Rot = 'Processos em segundo plano'; L = [int]$r.R_Limpo_Processos; P = $pv.Processos }
+        @{ Rot = 'RAM em uso (ociosa)';        L = [int]$r.R_Limpo_RamMB;     P = $pv.RamUsoMB; Un = ' MB' }
+        @{ Rot = 'Servicos em execucao';       L = [int]$r.R_Limpo_Servicos;  P = $pv.Servicos }
+        @{ Rot = 'Tarefas agendadas ativas';   L = [int]$r.R_Limpo_Tarefas;   P = $pv.Tarefas }
+        @{ Rot = 'Apps instalados';            L = [int]$r.R_Limpo_Appx;      P = $pv.Appx }
     )
     $aumentos = @()
     foreach ($i in $itens) {
