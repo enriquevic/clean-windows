@@ -42,10 +42,14 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $script:KitDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$script:KitFiles = @('autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1')
+$script:KitFiles = @('autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1', 'catalogo.ps1')
 $script:HasKit   = @($script:KitFiles | Where-Object { -not (Test-Path (Join-Path $script:KitDir $_)) }).Count -eq 0
 $script:Disks    = @()
 $script:Busy     = $false
+# Escolha do que sera aplicado na instalacao (checklist). Vai como selecao.txt dentro do kit.
+$script:SelPendrive = Join-Path $env:TEMP 'clean-windows-selecao-pendrive.txt'
+$script:Catalogo    = Join-Path $script:KitDir 'catalogo.ps1'
+if (Test-Path $script:Catalogo) { . $script:Catalogo }
 
 # ----------------------------------------------------------------------------- janela
 $form = New-Object System.Windows.Forms.Form
@@ -81,9 +85,11 @@ $cmbUsb = New-Object System.Windows.Forms.ComboBox; $cmbUsb.DropDownStyle = 'Dro
 $btnRefresh = New-Button 'Atualizar' 548 47
 
 $chkKit = New-Object System.Windows.Forms.CheckBox
-$chkKit.Text = 'Incluir o kit: instalacao automatica (autounattend.xml + freedom-tweaks + apps + verify)'
+$chkKit.Text = 'Incluir o kit (instalacao automatica: autounattend + scripts)'
 $chkKit.Checked = $script:HasKit; $chkKit.Enabled = $script:HasKit
-[void](Add-Control $chkKit 125 82 520 22)
+[void](Add-Control $chkKit 125 82 385 22)
+$btnSel = New-Button 'Escolher itens...' 515 81 130 24
+$btnSel.Enabled = $script:HasKit
 
 [void](New-Label 'Licenca do destino:' 12 108)
 $cmbLic = New-Object System.Windows.Forms.ComboBox
@@ -345,9 +351,18 @@ function Invoke-Build {
             [System.IO.File]::WriteAllText("$dst\sources\autounattend.xml", $xml, $enc)   # p/ midia vista como disco fixo
             $oemDir = Join-Path $dst 'sources\$OEM$\$$\Setup\Scripts'
             New-Item -ItemType Directory -Force -Path $oemDir, "$dst\Scripts" | Out-Null
-            foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1') {
-                Copy-Item -LiteralPath (Join-Path $script:KitDir $f) -Destination $oemDir -Force
-                Copy-Item -LiteralPath (Join-Path $script:KitDir $f) -Destination "$dst\Scripts" -Force
+            foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1', 'catalogo.ps1') {
+                $fp = Join-Path $script:KitDir $f
+                if (Test-Path $fp) {
+                    Copy-Item -LiteralPath $fp -Destination $oemDir -Force
+                    Copy-Item -LiteralPath $fp -Destination "$dst\Scripts" -Force
+                }
+            }
+            # leva a escolha do usuario (checklist), se houver: freedom-tweaks a le no 1o logon
+            if (Test-Path $script:SelPendrive) {
+                Copy-Item -LiteralPath $script:SelPendrive -Destination (Join-Path $oemDir 'selecao.txt') -Force
+                Copy-Item -LiteralPath $script:SelPendrive -Destination "$dst\Scripts\selecao.txt" -Force
+                Log '  selecao personalizada incluida (selecao.txt).'
             }
             Log '  kit injetado.'
         }
@@ -414,6 +429,16 @@ $btnDvd.Add_Click({
 })
 $btnRefresh.Add_Click({ Refresh-Disks })
 $btnGo.Add_Click({ Invoke-Build })
+$chkKit.Add_CheckedChanged({ $cmbLic.Enabled = $chkKit.Checked; $btnSel.Enabled = $chkKit.Checked })
+$btnSel.Add_Click({
+    if (-not (Get-Command Show-Checklist -ErrorAction SilentlyContinue)) {
+        Msg 'catalogo.ps1 nao encontrado ao lado do script; nao da para escolher os itens.' 'Atencao' 'Warning'; return
+    }
+    if (Show-Checklist -Parent $form -SelecaoPath $script:SelPendrive -Contexto 'Instalacao pelo pendrive') {
+        $n = @(Get-Content -LiteralPath $script:SelPendrive -EA SilentlyContinue | Where-Object { $_.Trim() -and -not $_.StartsWith('#') }).Count
+        Log "Selecao personalizada salva: $n itens marcados (vao junto no pendrive)."
+    }
+})
 $form.Add_FormClosing({ if ($script:Busy) { $_.Cancel = $true; Msg 'Aguarde terminar antes de fechar.' 'Atencao' 'Warning' } })
 $form.Add_Shown({
     Log ('Kit: ' + $(if ($script:HasKit) { $script:KitDir } else { 'NAO encontrado (coloque este script na pasta do kit)' }))

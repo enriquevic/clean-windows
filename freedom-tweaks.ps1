@@ -34,6 +34,10 @@ $Cfg = @{
                                      # Game Pass PC, Minecraft, Forza, e controle Xbox sem fio.
     DisableTelemetry       = $true   # servicos, tarefas agendadas e politicas de telemetria
     Privacy                = $true   # ID de publicidade, sugestoes, Spotlight, historico, localizacao...
+    RelogioManualSemLocalizacao = $true  # ao desligar a localizacao (Privacy), o "fuso horario
+                                     # automatico" para de funcionar e pode deixar a hora errada.
+                                     # Isto deixa o fuso MANUAL; o horario continua vindo da
+                                     # internet (NTP). So age quando Privacy = $true.
     DisableCopilotRecall   = $true   # Copilot, Recall, Click to Do, botao na barra
     DisableWidgetsChat     = $true   # Widgets, Chat/Teams, noticias
     RemoveOneDrive         = $true   # desinstala OneDrive e tira da barra lateral
@@ -167,6 +171,9 @@ if ($PSScriptRoot -and ($PSScriptRoot.TrimEnd('\') -ne $LogDir)) {
         Copy-Item $_.FullName $LogDir -Force -ErrorAction SilentlyContinue
     }
     Get-ChildItem -Path $LogDir -Filter '*.ps1' -ErrorAction SilentlyContinue | ForEach-Object { $_.IsReadOnly = $false }
+    # leva junto a escolha do usuario (checklist), para a reaplicacao apos atualizacao usar a mesma
+    $selSrc = Join-Path $PSScriptRoot 'selecao.txt'
+    if (Test-Path $selSrc) { Copy-Item $selSrc (Join-Path $LogDir 'selecao.txt') -Force -ErrorAction SilentlyContinue }
 }
 $Log = Join-Path $LogDir 'freedom-tweaks.log'
 
@@ -239,6 +246,38 @@ Log "freedom-tweaks.ps1 iniciado por $env:USERNAME em $env:COMPUTERNAME" 'Green'
 $P = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows'
 $script:SvcOrig = @{}          # estado original dos servicos, para o Reativar restaurar
 $script:AppsRemovidos = @()    # apps que este script removeu
+
+# ===================================================================================
+#  Selecao do usuario (checklist do menu / do pendrive). Sem o arquivo selecao.txt,
+#  aplica os padroes. Com ele, aplica SO o que ficou marcado, item por item.
+# ===================================================================================
+$script:AppSelecionados = $null   # $null = usar a lista padrao ($BloatApps + Xbox conforme Cfg)
+$selPath = $null
+foreach ($cand in (Join-Path $PSScriptRoot 'selecao.txt'), (Join-Path $LogDir 'selecao.txt')) {
+    if ($cand -and (Test-Path $cand)) { $selPath = $cand; break }
+}
+if ($selPath) {
+    Section "Aplicando a selecao personalizada"
+    Log "  arquivo: $selPath"
+    $sel = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($line in (Get-Content -LiteralPath $selPath -ErrorAction SilentlyContinue)) {
+        $l = $line.Trim(); if ($l -and -not $l.StartsWith('#')) { [void]$sel.Add($l) }
+    }
+    # grupos de recursos -> ligam/desligam blocos inteiros
+    $grpKeys = @('DisableTelemetry','Privacy','RelogioManualSemLocalizacao','DisableCopilotRecall',
+        'DisableWidgetsChat','RemoveOneDrive','GamingTweaks','PowerPlanUltimate','DisableVBS',
+        'DisableHibernation','DesempenhoVisual','SilenciarUAC','ExplorerQoL','EdgeTweaks',
+        'PreventDeviceEncryption','AutoReapplyAfterUpdate','DisableSysMain','BlockDriverUpdates','DualBootUtcClock')
+    foreach ($k in $grpKeys) { $Cfg[$k] = $sel.Contains("grp:$k") }
+    # apps: remove exatamente os marcados (inclui os do Xbox, se marcados)
+    $script:AppSelecionados = @(($BloatApps + $XboxApps) | Where-Object { $sel.Contains("app:$_") })
+    # servicos e tarefas: mantem so os marcados
+    $Services = @($Services | Where-Object { $sel.Contains("svc:$_") })
+    $Tasks    = @($Tasks    | Where-Object { $sel.Contains("task:$_") })
+    Log "  marcados: $($script:AppSelecionados.Count) apps, $($Services.Count) servicos, $($Tasks.Count) tarefas"
+} else {
+    Log "  sem selecao personalizada: aplicando os padroes"
+}
 
 # ---- Medicao ANTES (para o programa mostrar a comparacao de leveza depois) ----
 if ($Cfg.MedirDesempenho) {
@@ -384,8 +423,13 @@ function Apply-UserTweaks([string]$U) {
 # ===================================================================================
 if ($Cfg.RemoveBloatApps) {
     Section "Removendo apps pre-instalados"
-    $list = $BloatApps
-    if (-not $Cfg.KeepXboxApps) { $list += $XboxApps }
+    $list = if ($null -ne $script:AppSelecionados) {
+        $script:AppSelecionados            # veio da selecao do checklist (inclui Xbox se marcado)
+    } else {
+        $l = $BloatApps
+        if (-not $Cfg.KeepXboxApps) { $l += $XboxApps }
+        $l
+    }
     foreach ($pkg in (Get-AppxPackage -AllUsers | Where-Object { $list -contains $_.Name })) {
         try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop; $script:AppsRemovidos += $pkg.Name; Log "  removido: $($pkg.Name)" }
         catch { Log "  ! $($pkg.Name): $($_.Exception.Message)" 'Yellow' }
@@ -418,8 +462,18 @@ if ($Cfg.DisableTelemetry) {
     # Autologgers de ETW que alimentam a telemetria
     Set-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\AutoLogger-Diagtrack-Listener' Start 0
     Set-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\SQMLogger' Start 0
-    if ($Cfg.DisableServices) { foreach ($s in $Services) { Disable-Svc $s } }
-    if ($Cfg.DisableScheduledTasks) { foreach ($t in $Tasks) { Disable-Task $t } }
+}
+
+# Servicos e tarefas ficam FORA do "if DisableTelemetry": com o checklist, o usuario pode
+# manter cada servico/tarefa marcado mesmo que desligue as politicas de telemetria. As listas
+# $Services/$Tasks ja vem filtradas pela selecao (ou completas, se nao houver selecao).
+if ($Cfg.DisableServices -and $Services.Count) {
+    Section "Servicos"
+    foreach ($s in $Services) { Disable-Svc $s }
+}
+if ($Cfg.DisableScheduledTasks -and $Tasks.Count) {
+    Section "Tarefas agendadas"
+    foreach ($t in $Tasks) { Disable-Task $t }
 }
 
 # ===================================================================================
@@ -444,6 +498,15 @@ if ($Cfg.Privacy) {
     Set-Reg "$P\Maps" AutoDownloadAndUpdateMapData 0
     Set-Reg 'HKLM:\SOFTWARE\Policies\Microsoft\FindMyDevice' AllowFindMyDevice 0
     Set-Reg "$P\DeliveryOptimization" DODownloadMode 0           # sem P2P de updates
+}
+
+# Com a localizacao desligada acima, o "Definir fuso horario automaticamente" para de
+# funcionar e pode deixar a HORA errada. Deixamos o fuso MANUAL. O horario em si continua
+# sincronizando pela internet (NTP), entao o relogio nao atrasa.
+if ($Cfg.Privacy -and $Cfg.RelogioManualSemLocalizacao) {
+    Section "Fuso horario manual (localizacao desligada)"
+    Set-Reg 'HKLM:\SYSTEM\CurrentControlSet\Services\tzautoupdate' Start 4
+    Log "  fuso horario automatico desligado (fuso manual; a hora continua vindo da internet)"
 }
 
 # ===================================================================================
@@ -477,7 +540,12 @@ if ($Cfg.RemoveOneDrive) {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         & winget uninstall --id Microsoft.OneDrive --silent --accept-source-agreements 2>$null | Out-Null
     }
-    Set-Reg "$P\OneDrive" DisableFileSyncNGSC 1
+    # NAO usamos a politica DisableFileSyncNGSC: ela BLOQUEIA o OneDrive de vez e impede voce de
+    # reinstalar depois. Aqui so DESINSTALAMOS e tiramos o auto-inicio (a chave OneDriveSetup do
+    # Run, em Apply-UserTweaks). Assim o Windows nao o instala sozinho, mas voce pode baixar e
+    # reinstalar quando quiser em https://www.microsoft.com/microsoft-365/onedrive/download .
+    # Se uma atualizacao grande do Windows recolocar o OneDrive, a reaplicacao automatica o remove.
+    Remove-RegValue "$P\OneDrive" DisableFileSyncNGSC
     foreach ($d in "$env:LOCALAPPDATA\Microsoft\OneDrive", "$env:ProgramData\Microsoft OneDrive", "$env:SystemDrive\OneDriveTemp") {
         if (Test-Path $d) { Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue }
     }

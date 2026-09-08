@@ -20,7 +20,7 @@ param([switch]$AllowFixedDisk)
 # ===================================================================================
 #  CONFIGURACAO DO AUTOR  -  preencha aqui e nada mais precisa mudar
 # ===================================================================================
-$Versao = '1.3'
+$Versao = '1.4'
 
 # Para onde vai o feedback dos usuarios (abre o programa de e-mail da pessoa).
 $EmailFeedback = 'roothub.softwares@gmail.com'
@@ -57,6 +57,10 @@ Get-ChildItem -LiteralPath $KitDir -File -ErrorAction SilentlyContinue |
     ForEach-Object { Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue }
 $Tweaks  = Join-Path $KitDir 'freedom-tweaks.ps1'
 $Pendriv = Join-Path $KitDir 'criar-pendrive.ps1'
+$SelPath = Join-Path $KitDir 'selecao.txt'   # a escolha do checklist e gravada aqui
+# Catalogo + janela de escolha (o que sera aplicado). Se faltar, o programa segue com os padroes.
+$Catalogo = Join-Path $KitDir 'catalogo.ps1'
+if (Test-Path $Catalogo) { . $Catalogo }
 
 # ---------------------------------------------------------------------------------
 #  Janela de progresso: roda o script escondido e mostra o log aqui dentro, para o
@@ -424,6 +428,11 @@ $btn1.Add_Click({
     if (-not (Test-Path $Tweaks)) {
         [void][System.Windows.Forms.MessageBox]::Show($form, "Nao encontrei o freedom-tweaks.ps1 em:`n$KitDir", 'Clean Windows', 'OK', 'Error')
         return
+    }
+    # Deixa o usuario escolher item por item o que sera aplicado (grava selecao.txt ao lado
+    # do freedom-tweaks; ele le esse arquivo). Cancelar aqui aborta a limpeza.
+    if (Get-Command Show-Checklist -ErrorAction SilentlyContinue) {
+        if (-not (Show-Checklist -Parent $form -SelecaoPath $SelPath -Contexto 'Limpar este Windows')) { return }
     }
     $txt = "Os ajustes serao aplicados NESTE Windows agora.`n`n" +
            "- Apps pre-instalados, telemetria, Copilot, Widgets e OneDrive serao removidos.`n" +

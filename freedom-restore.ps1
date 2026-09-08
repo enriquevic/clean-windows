@@ -104,6 +104,8 @@ foreach($k in "$Pol\DataCollection","$Pol\CloudContent","$Pol\WindowsCopilot","$
     'HKLM:\SOFTWARE\Policies\Microsoft\Dsh','HKLM:\SOFTWARE\Policies\Microsoft\Edge',
     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection'){ Del-Key $k }
 Set-U 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications' ConfigureChatAutoInstall 1
+# fuso horario automatico de volta (o Clean Windows deixa manual quando desliga a localizacao)
+Set-U 'HKLM:\SYSTEM\CurrentControlSet\Services\tzautoupdate' Start 3
 
 # ---- 4. UAC de volta (popup padrao) ----
 Section "UAC padrao (com popup)"

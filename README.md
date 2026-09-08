@@ -2,7 +2,7 @@
   <img src="CleanWindows-preview.png" width="140" alt="Clean Windows">
 </p>
 
-# Clean Windows 1.3
+# Clean Windows 1.4
 
 Monte a **sua** edição enxuta do Windows 11, a partir da ISO **oficial da Microsoft**:
 sem bloatware, sem telemetria, sem Copilot/Recall/Widgets/OneDrive, com os ajustes de
@@ -13,7 +13,7 @@ Dá para usar de dois jeitos:
 - **Limpar o Windows que já está instalado** nesta máquina (nada é formatado); ou
 - **Criar um pendrive** que instala um Windows 11 já limpo do zero em qualquer PC.
 
-> **Baixar:** pegue o `clean-windows-1.3.zip` na aba **[Releases](../../releases)**, extraia
+> **Baixar:** pegue o `clean-windows-1.4.zip` na aba **[Releases](../../releases)**, extraia
 > numa pasta e siga o passo a passo abaixo.
 
 ## O que voce ganha
@@ -27,6 +27,8 @@ Dá para usar de dois jeitos:
   reaplica os ajustes sozinho.
 - **Voce ve o resultado:** ao final, o programa mostra **quanto o seu Windows ficou mais
   enxuto** (processos, RAM, apps e servicos, antes e depois).
+- **Voce decide item por item:** antes de aplicar, uma lista mostra **cada app, servico,
+  tarefa e ajuste** que sera mexido, com uma caixa ao lado. Desmarque o que quiser manter.
 
 Defender, Secure Boot, TPM, Windows Update e a Microsoft Store continuam **ligados** — a sua
 protecao nao e desativada.
@@ -35,7 +37,7 @@ protecao nao e desativada.
 
 ## Como começar
 
-1. Extraia o `clean-windows-1.3.zip` numa pasta (ex.: `C:\Clean Windows`).
+1. Extraia o `clean-windows-1.4.zip` numa pasta (ex.: `C:\Clean Windows`).
 2. Dê **dois cliques em `preparar.cmd`** — só na primeira vez. Ele desbloqueia os arquivos
    e cria o **`CleanWindows.exe`** (usando o compilador que já vem no Windows; nada é baixado).
 3. Dê **dois cliques em `CleanWindows.exe`**. Abre um menu com duas opções:
@@ -54,8 +56,11 @@ de terminal por um instante).
 
 1. Se você usa OneDrive, **tire seus arquivos da pasta do OneDrive antes** (o script o desinstala).
 2. Abra o `CleanWindows.exe` → **Limpar ESTE Windows**.
-3. Deixe marcado **"Criar um ponto de restauração antes"** (recomendado).
-4. Confirme. Uma janela mostra o progresso; ao terminar, **reinicie o PC**.
+3. Aparece a **lista do que será aplicado** — apps, serviços, tarefas e ajustes, cada um com
+   uma caixa. **Desmarque o que quiser manter** (passe o mouse para ver o que cada item faz) e
+   clique em *Aplicar seleção*. Botões *Restaurar padrão*, *Marcar tudo* e *Desmarcar tudo* ajudam.
+4. Deixe marcado **"Criar um ponto de restauração antes"** (recomendado).
+5. Confirme. Uma janela mostra o progresso; ao terminar, **reinicie o PC**.
 
 Depois do reinício, ele fica assim para sempre — e, a cada **atualização de versão** do
 Windows (ex.: 25H2 → 26H1), o Clean Windows se **reaplica sozinho**: avisa na tela, cria um
@@ -76,7 +81,9 @@ Você vai precisar de: a **ISO oficial do Windows 11** (baixe em
 3. **Pendrive:** escolha o seu na lista (só aparecem dispositivos USB). Se não aparecer,
    conecte e clique em *Atualizar*.
 4. **Incluir o kit:** deixe marcado (instalação automática, sem perguntas, cria a conta
-   local **Freedom**).
+   local **Freedom**). Ao lado, **"Escolher itens..."** abre a mesma lista de apps/serviços/
+   tarefas/ajustes: o que você marcar aqui é **exatamente o que a instalação vai aplicar** no
+   PC de destino — a escolha é gravada dentro do pendrive.
 5. **Licença do destino** — a escolha mais importante; o programa detecta e sugere:
    - **PC de marca** (Acer, Dell, Lenovo, Positivo...): usa a chave gravada na placa. Instala
      a edição certa e ativa sozinho. *(É a opção correta para a maioria dos notebooks.)*
@@ -106,6 +113,14 @@ Discord, Visual C++ etc.
 Outlook novo, Notícias, Mapas...), telemetria e tarefas de diagnóstico, Copilot e Recall,
 Widgets, Chat, e o OneDrive.
 
+**OneDrive:** ele é **desinstalado**, mas **não fica bloqueado** — se um dia quiser, você mesmo
+pode baixar e reinstalar em <https://www.microsoft.com/microsoft-365/onedrive/download>. O que
+o programa faz é impedir que **o Windows** o reinstale sozinho.
+
+**Relógio:** ao desligar a localização, o "definir fuso horário automaticamente" para de
+funcionar e pode deixar a hora errada. Por isso o programa deixa o **fuso horário manual** — a
+hora em si continua sendo sincronizada pela internet, então o relógio não atrasa.
+
 **Fica ligado de propósito:** Microsoft Defender, Secure Boot, TPM, Windows Update e a
 Microsoft Store — desligar isso é o que faz as "edições piratas" quebrarem com o tempo e
 travarem anti-cheats de jogos. A Segurança do Windows continua ativa.
@@ -118,7 +133,11 @@ fontes). **UAC:** opcionalmente (`SilenciarUAC`), contas de administrador elevam
 "Deseja permitir..." — isso **nao desliga o UAC**: a protecao, a sandbox de apps e a
 Microsoft Store continuam funcionando.
 
-Cada item liga/desliga no bloco `$Cfg`, no topo do `freedom-tweaks.ps1`.
+**Você escolhe o que aplicar:** ao clicar em *Limpar ESTE Windows* (ou em *Escolher itens...*
+ao criar o pendrive), aparece a lista completa — **cada app, serviço, tarefa e ajuste** com
+uma caixa, agrupados por assunto. Desmarque o que não quiser e o resto continua intocado. (Quem
+prefere editar texto ainda pode ligar/desligar tudo no bloco `$Cfg`, no topo do
+`freedom-tweaks.ps1`.)
 
 ---
 

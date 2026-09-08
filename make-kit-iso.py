@@ -28,7 +28,7 @@ KIT = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(KIT, "kit.iso")
 SCRIPTS = {"freedom-tweaks.ps1": "FREEDOM.PS1", "apps.ps1": "APPS.PS1",
            "verify.ps1": "VERIFY.PS1", "freedom-watch.ps1": "FREEWTCH.PS1",
-           "freedom-restore.ps1": "FREEREST.PS1"}
+           "freedom-restore.ps1": "FREEREST.PS1", "catalogo.ps1": "CATALOGO.PS1"}
 
 for f in ["autounattend.xml", "README.md", *SCRIPTS]:
     if not os.path.exists(os.path.join(KIT, f)):
