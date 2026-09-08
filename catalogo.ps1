@@ -71,13 +71,13 @@ function Get-CleanWindowsCatalog {
                 It 'app:Microsoft.SkypeApp'                         'Skype'                                app $true  'Skype.'
                 It 'app:Microsoft.Office.OneNote'                   'OneNote (versao da Loja)'             app $true  'OneNote UWP.'
                 It 'app:Microsoft.LinkedIn'                         'LinkedIn'                             app $true  'App do LinkedIn.'
-                # Xbox: desmarcados por padrao (necessarios p/ Game Pass, Minecraft, Forza, controle)
-                It 'app:Microsoft.GamingApp'                        'App Xbox (Game Pass) - manter'        app $false 'Necessario para o Game Pass no PC.'
-                It 'app:Microsoft.XboxGamingOverlay'                'Xbox Game Bar - manter'               app $false 'Overlay/gravacao Win+G.'
-                It 'app:Microsoft.XboxGameOverlay'                  'Xbox (overlay) - manter'              app $false 'Componente do Game Bar.'
-                It 'app:Microsoft.Xbox.TCUI'                        'Xbox (TCUI) - manter'                 app $false 'Interface comum do Xbox.'
-                It 'app:Microsoft.XboxIdentityProvider'             'Xbox (login/identidade) - manter'     app $false 'Login em jogos da Xbox/Store.'
-                It 'app:Microsoft.XboxSpeechToTextOverlay'          'Xbox (legendas por voz) - manter'     app $false 'Legendas de voz no Game Bar.'
+                # Xbox: marcados por padrao (tudo ligado). DESMARQUE se voce joga com Game Pass/Xbox.
+                It 'app:Microsoft.GamingApp'                        'App Xbox (Game Pass)'                 app $true  'DESMARQUE se voce usa o Game Pass ou joga pela Store no PC.'
+                It 'app:Microsoft.XboxGamingOverlay'                'Xbox Game Bar (Win+G)'                app $true  'Overlay/gravacao Win+G. Desmarque se usa.'
+                It 'app:Microsoft.XboxGameOverlay'                  'Xbox (overlay)'                       app $true  'Componente do Game Bar.'
+                It 'app:Microsoft.Xbox.TCUI'                        'Xbox (TCUI)'                          app $true  'Interface comum do Xbox.'
+                It 'app:Microsoft.XboxIdentityProvider'             'Xbox (login/identidade)'              app $true  'DESMARQUE se voce joga por Xbox/Game Pass (login dos jogos).'
+                It 'app:Microsoft.XboxSpeechToTextOverlay'          'Xbox (legendas por voz)'              app $true  'Legendas de voz no Game Bar.'
             )
         }
 
@@ -102,10 +102,10 @@ function Get-CleanWindowsCatalog {
                 It 'grp:EdgeTweaks'              'Edge mais leve (sem segundo plano / barra lateral)'         grupo $true  'Impede o Edge de rodar sozinho em segundo plano.'
                 It 'grp:PreventDeviceEncryption' 'Impedir criptografia automatica (BitLocker)'                grupo $true  'Evita que o Win11 24H2/25H2 cifre o disco sozinho. Nao decifra discos ja cifrados.'
                 It 'grp:AutoReapplyAfterUpdate'  'Reaplicar os ajustes apos atualizacoes do Windows'          grupo $true  'Uma atualizacao grande pode religar telemetria/Copilot; isto reaplica sozinho.'
-                # avancados - desmarcados por padrao
-                It 'grp:DisableSysMain'          'Desligar SysMain/Superfetch (avancado)'                     grupo $false 'So ligue se tiver travadinhas (stutter) comprovadas.'
-                It 'grp:BlockDriverUpdates'      'Bloquear drivers pelo Windows Update (avancado)'            grupo $false 'Impede o Windows de trocar o driver da GPU. Ligue depois de instalar seus drivers.'
-                It 'grp:DualBootUtcClock'        'Relogio em UTC para dual boot com Linux (avancado)'         grupo $false 'So para quem tem Linux no mesmo PC.'
+                # avancados
+                It 'grp:DisableSysMain'          'Desligar SysMain/Superfetch'                                grupo $true  'Em geral tudo bem em SSD; se notar travadinhas (stutter), desmarque.'
+                It 'grp:BlockDriverUpdates'      'Bloquear troca de drivers pelo Windows Update'              grupo $true  'Evita o Windows trocar o driver da GPU. Desmarque se ainda precisa baixar drivers pela primeira vez.'
+                It 'grp:DualBootUtcClock'        'Relogio em UTC (SO para dual boot com Linux)'               grupo $false 'Deixe DESMARCADO se este PC so tem Windows, senao a hora fica errada. Marque so se tiver Linux no mesmo PC.'
             )
         }
 
@@ -231,6 +231,7 @@ function Show-Checklist {
     $pan = New-Object System.Windows.Forms.Panel
     $pan.AutoScroll = $true; $pan.BorderStyle = 'FixedSingle'
     $pan.Location = New-Object System.Drawing.Point(18, 68); $pan.Size = New-Object System.Drawing.Size(644, 486)
+    $pan.Anchor = 'Top,Bottom,Left,Right'    # encolhe junto com a janela em telas menores
     $f.Controls.Add($pan)
 
     $tip = New-Object System.Windows.Forms.ToolTip
@@ -293,39 +294,51 @@ function Show-Checklist {
         $y += 10
     }
 
-    # ---- botoes ----
+    # ---- botoes (ancorados na base, para continuarem visiveis se a janela encolher) ----
     $bPad = New-Object System.Windows.Forms.Button
     $bPad.Text = 'Restaurar padrao'
     $bPad.Location = New-Object System.Drawing.Point(18, 566); $bPad.Size = New-Object System.Drawing.Size(130, 30)
+    $bPad.Anchor = 'Bottom,Left'
     $bPad.Add_Click({ foreach ($b in $script:cwBoxes) { $b.Checked = [bool]$script:cwPadrao[[string]$b.Tag] } })
     $f.Controls.Add($bPad)
 
     $bAll = New-Object System.Windows.Forms.Button
     $bAll.Text = 'Marcar tudo'
     $bAll.Location = New-Object System.Drawing.Point(156, 566); $bAll.Size = New-Object System.Drawing.Size(100, 30)
+    $bAll.Anchor = 'Bottom,Left'
     $bAll.Add_Click({ foreach ($b in $script:cwBoxes) { $b.Checked = $true } })
     $f.Controls.Add($bAll)
 
     $bNone = New-Object System.Windows.Forms.Button
     $bNone.Text = 'Desmarcar tudo'
     $bNone.Location = New-Object System.Drawing.Point(264, 566); $bNone.Size = New-Object System.Drawing.Size(110, 30)
+    $bNone.Anchor = 'Bottom,Left'
     $bNone.Add_Click({ foreach ($b in $script:cwBoxes) { $b.Checked = $false } })
     $f.Controls.Add($bNone)
 
     $ok = New-Object System.Windows.Forms.Button
     $ok.Text = 'Aplicar selecao'; $ok.Font = New-Object System.Drawing.Font('Segoe UI', 9.5, [System.Drawing.FontStyle]::Bold)
-    $ok.Location = New-Object System.Drawing.Point(470, 566); $ok.Size = New-Object System.Drawing.Size(130, 30)
+    $ok.Location = New-Object System.Drawing.Point(444, 566); $ok.Size = New-Object System.Drawing.Size(138, 30)
+    $ok.Anchor = 'Bottom,Right'
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
     $f.Controls.Add($ok)
 
     $no = New-Object System.Windows.Forms.Button
     $no.Text = 'Cancelar'
-    $no.Location = New-Object System.Drawing.Point(606, 566); $no.Size = New-Object System.Drawing.Size(56, 30)
+    $no.Location = New-Object System.Drawing.Point(590, 566); $no.Size = New-Object System.Drawing.Size(72, 30)
+    $no.Anchor = 'Bottom,Right'
     $no.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
     $f.Controls.Add($no)
 
     $f.AcceptButton = $ok; $f.CancelButton = $no
     $h.Text = "$(@($boxes | Where-Object { $_.Checked }).Count) de $total itens serao aplicados"
+
+    # Cabe em telas pequenas / com escala de tela alta: se a janela for mais alta que a area
+    # util, encolhe (o painel tem rolagem e os botoes ficam ancorados na base, sempre visiveis).
+    try {
+        $wa = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea.Height
+        if ($f.Height -gt $wa) { $f.Height = $wa }
+    } catch {}
 
     $r = $f.ShowDialog($Parent)
     if ($r -eq [System.Windows.Forms.DialogResult]::OK) {
