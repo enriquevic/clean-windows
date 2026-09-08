@@ -332,6 +332,9 @@ function Show-Checklist {
     $f.Controls.Add($no)
 
     $f.AcceptButton = $ok; $f.CancelButton = $no
+    # foco inicial no 1o item (e NAO no link "marcar/desmarcar grupo", que capturava o Enter e
+    # alternava um grupo sem querer). Assim Enter aciona "Aplicar selecao" (o AcceptButton).
+    $f.Add_Shown({ try { if ($script:cwBoxes.Count -gt 0) { $script:cwBoxes[0].Focus() } } catch {} })
     $h.Text = "$(@($boxes | Where-Object { $_.Checked }).Count) de $total itens serao aplicados"
 
     # Cabe em telas pequenas / com escala de tela alta: se a janela for mais alta que a area

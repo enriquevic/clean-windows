@@ -204,6 +204,21 @@ function Show-Progresso {
     $bt.Add_Click({ $w.Close() })
     $w.Controls.Add($bt)
 
+    # Reiniciar agora: fica ao lado de "Fechar" e so habilita quando termina. Limpar e Reativar
+    # so ficam prontos apos o reinicio, entao este botao poupa o usuario de reiniciar na mao.
+    $btReboot = New-Object System.Windows.Forms.Button
+    $btReboot.Text = 'Reiniciar agora'
+    $btReboot.Enabled = $false
+    $btReboot.Location = New-Object System.Drawing.Point(468, 418)
+    $btReboot.Size = New-Object System.Drawing.Size(144, 28)
+    $btReboot.Add_Click({
+        # chamada SINCRONA (agenda o reinicio ANTES de fechar a janela/sair do processo).
+        # Com Start-Process assincrono o processo saia antes do shutdown ser agendado.
+        try { & shutdown.exe /r /t 3 } catch {}
+        $w.Close()
+    })
+    $w.Controls.Add($btReboot)
+
     $linhasAntes = if (Test-Path $LogPath) { @(Get-Content -LiteralPath $LogPath -ErrorAction SilentlyContinue).Count } else { 0 }
     $proc = Start-Process -FilePath $Exe -ArgumentList $Argumentos -PassThru -WindowStyle Hidden
     $script:Rodando = $true
@@ -231,8 +246,9 @@ function Show-Progresso {
     $script:Rodando = $false
     $bar.Style = 'Continuous'; $bar.Value = 100
     $lb.Text = 'Concluido'
-    $sub.Text = 'Reinicie o PC para aplicar tudo (VBS, HAGS, servicos).'
+    $sub.Text = "Reinicie o PC para aplicar tudo (VBS, HAGS, servicos) - ou clique em 'Reiniciar agora'."
     $bt.Enabled = $true
+    $btReboot.Enabled = $true
     while (-not $w.IsDisposed) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 120 }
 }
 
