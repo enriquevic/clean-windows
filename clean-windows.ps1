@@ -144,6 +144,10 @@ Ao marcar "Li e concordo" e clicar em Continuar, voce declara estar ciente de tu
 
     $ck.Add_CheckedChanged({ $ok.Enabled = $ck.Checked })
     $t.AcceptButton = $ok; $t.CancelButton = $no
+    # O texto NAO deve abrir todo selecionado (azul). A caixa de texto so-leitura seleciona
+    # tudo quando recebe o foco; tiramos ela do foco inicial e limpamos a selecao ao abrir.
+    $tb.TabStop = $false
+    $t.Add_Shown({ $tb.Select(0, 0); $ck.Focus() })
 
     $r = $t.ShowDialog($form)
     if ($r -eq [System.Windows.Forms.DialogResult]::OK -and $ck.Checked) {

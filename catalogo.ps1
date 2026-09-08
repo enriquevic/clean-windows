@@ -255,6 +255,7 @@ function Show-Checklist {
         $lnk = New-Object System.Windows.Forms.LinkLabel
         $lnk.Text = 'marcar/desmarcar grupo'
         $lnk.Font = New-Object System.Drawing.Font('Segoe UI', 8)
+        $lnk.TabStop = $false     # nao entra na ordem de foco: evita ativar sem querer com Enter
         $lnk.Location = New-Object System.Drawing.Point(474, ($y + 3)); $lnk.Size = New-Object System.Drawing.Size(140, 18)
         $grpBoxes = New-Object System.Collections.ArrayList
         $lnk.Add_LinkClicked({
