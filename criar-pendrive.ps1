@@ -42,7 +42,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $script:KitDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$script:KitFiles = @('autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'apps.ps1', 'verify.ps1')
+$script:KitFiles = @('autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1')
 $script:HasKit   = @($script:KitFiles | Where-Object { -not (Test-Path (Join-Path $script:KitDir $_)) }).Count -eq 0
 $script:Disks    = @()
 $script:Busy     = $false
@@ -345,7 +345,7 @@ function Invoke-Build {
             [System.IO.File]::WriteAllText("$dst\sources\autounattend.xml", $xml, $enc)   # p/ midia vista como disco fixo
             $oemDir = Join-Path $dst 'sources\$OEM$\$$\Setup\Scripts'
             New-Item -ItemType Directory -Force -Path $oemDir, "$dst\Scripts" | Out-Null
-            foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'apps.ps1', 'verify.ps1') {
+            foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1') {
                 Copy-Item -LiteralPath (Join-Path $script:KitDir $f) -Destination $oemDir -Force
                 Copy-Item -LiteralPath (Join-Path $script:KitDir $f) -Destination "$dst\Scripts" -Force
             }

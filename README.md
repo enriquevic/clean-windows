@@ -146,6 +146,15 @@ passa em silêncio.
 Um commit sozinho não avisa ninguém — o que os clientes comparam é o número da Release.
 Para desligar a verificação, deixe `$RepoUpdate = ''`.
 
+## Reativar (desfazer)
+
+Depois de limpar, o menu mostra o botão **"Reativar programas e efeitos do Windows"**. Ele
+devolve o Windows ao padrão: religa transparencia, sombras e animacoes; reativa servicos,
+tarefas e a telemetria; restaura o popup do administrador; religa hibernacao e Isolamento de
+Nucleo; e tenta reinstalar o OneDrive e os apps pela Loja/winget (alguns podem precisar
+voltar manualmente pela Microsoft Store). Ao final, mostra **quanto o Windows ficou mais
+pesado** ao voltar ao padrao. Para limpar de novo, use "Limpar ESTE Windows".
+
 ## Antivírus
 
 Um antivírus **pode marcar** estes scripts — é um falso positivo previsível: eles fazem o

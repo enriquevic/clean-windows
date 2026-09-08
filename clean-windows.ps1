@@ -230,7 +230,7 @@ function Show-Progresso {
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Clean Windows $Versao"
-$form.ClientSize = New-Object System.Drawing.Size(660, 476)
+$form.ClientSize = New-Object System.Drawing.Size(660, 560)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
@@ -289,7 +289,19 @@ $btn2.FlatStyle = 'Standard'
                  "perguntas, criando a conta local Freedom.") `
         48 312 580 56 9 ([System.Drawing.FontStyle]::Regular) $gray)
 
-$lblFoot = New-Text '' 30 376 600 20 8 ([System.Drawing.FontStyle]::Regular) $gray
+$btnReativar = New-Object System.Windows.Forms.Button
+$btnReativar.Text = "   Reativar programas e efeitos do Windows"
+$btnReativar.Font = New-Object System.Drawing.Font('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
+$btnReativar.TextAlign = 'MiddleLeft'; $btnReativar.FlatStyle = 'Standard'
+[void](Add-Ctl $btnReativar 30 376 600 44)
+$limpezaAplicada = try { (Get-ItemProperty 'HKLM:\SOFTWARE\CleanWindows' -Name LimpezaAplicada -ErrorAction Stop).LimpezaAplicada } catch { 0 }
+$btnReativar.Enabled = ($limpezaAplicada -eq 1)
+[void](New-Text $(if ($limpezaAplicada -eq 1) {
+                "Desfaz a limpeza (volta ao padrao) e mostra quanto o Windows fica mais pesado." }
+              else { "Disponivel depois de usar 'Limpar ESTE Windows'." }) `
+        48 422 580 20 8 ([System.Drawing.FontStyle]::Regular) $gray)
+
+$lblFoot = New-Text '' 30 500 600 20 8 ([System.Drawing.FontStyle]::Regular) $gray
 if ($AllowFixedDisk) {
     $lblFoot.Text = 'MODO DE TESTE: a tela do pendrive lista tambem discos internos.'
     $lblFoot.ForeColor = [System.Drawing.Color]::Firebrick
@@ -299,16 +311,16 @@ if ($AllowFixedDisk) {
 
 $btnFeed = New-Object System.Windows.Forms.Button
 $btnFeed.Text = 'Feedback'
-[void](Add-Ctl $btnFeed 30 404 130 30)
+[void](Add-Ctl $btnFeed 30 522 130 30)
 
 $btnDoar = New-Object System.Windows.Forms.Button
 $btnDoar.Text = 'Apoiar o projeto'
-[void](Add-Ctl $btnDoar 168 404 150 30)
+[void](Add-Ctl $btnDoar 168 522 150 30)
 if (-not $ChavePix -and -not $UrlDonativo) { $btnDoar.Enabled = $false }
 
 $btnSair = New-Object System.Windows.Forms.Button
 $btnSair.Text = 'Sair'
-[void](Add-Ctl $btnSair 550 404 80 30)
+[void](Add-Ctl $btnSair 550 522 80 30)
 $btnSair.Add_Click({ $form.Close() })
 
 # --- Feedback: abre o programa de e-mail do usuario com a mensagem ja comecada ---
@@ -429,6 +441,25 @@ $btn1.Add_Click({
     $form.Close()
 })
 
+$btnReativar.Add_Click({
+    $restore = Join-Path $KitDir 'freedom-restore.ps1'
+    if (-not (Test-Path $restore)) {
+        [void][System.Windows.Forms.MessageBox]::Show($form, "Nao encontrei o freedom-restore.ps1 em:`n$KitDir", 'Clean Windows', 'OK', 'Error'); return
+    }
+    $txt = "Isto DESFAZ o Clean Windows e devolve o Windows ao padrao:`n`n" +
+           "- Religa transparencia, sombras e animacoes.`n" +
+           "- Reativa servicos, tarefas, telemetria e o popup do administrador.`n" +
+           "- Tenta reinstalar o OneDrive e os apps (pela Loja).`n`n" +
+           "O Windows vai ficar MAIS PESADO. Ao final, mostramos quanto.`n`nContinuar?"
+    if ([System.Windows.Forms.MessageBox]::Show($form, $txt, 'Reativar Windows padrao', 'YesNo', 'Warning', 'Button2') -ne 'Yes') { return }
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$restore`"", '-Quiet')
+    $form.Hide()
+    Show-Progresso -Titulo 'Reativando o Windows padrao' -Exe 'powershell.exe' -Argumentos $a `
+                   -LogPath "$env:SystemRoot\Setup\Scripts\freedom-restore.log"
+    Show-Restauracao
+    $form.Close()
+})
+
 $btn2.Add_Click({
     if (-not (Confirmar-Termos)) { return }
     if (-not (Test-Path $Pendriv)) {
@@ -472,7 +503,12 @@ function Show-Comparacao {
     if ($flag -ne 1) { return }
     $a = try { Get-ItemProperty $CW -ErrorAction Stop } catch { $null }
     if (-not $a -or $null -eq $a.Antes_Processos) { return }
-    $d = Get-Metricas
+    # "depois" = medida no FIM da limpeza (Limpo_*), na mesma janela de tempo do "antes",
+    # para nao pegar flutuacao. Se faltar, mede agora.
+    if ($null -ne $a.Limpo_Processos) {
+        $d = [pscustomobject]@{ Processos=[int]$a.Limpo_Processos; RamUsoMB=[int]$a.Limpo_RamMB
+            Servicos=[int]$a.Limpo_Servicos; Appx=[int]$a.Limpo_Appx; Tarefas=[int]$a.Limpo_Tarefas; Inicio=[int]$a.Limpo_Inicio }
+    } else { $d = Get-Metricas }
 
     $itens = @(
         @{ Rot = 'Processos em segundo plano'; Ini = [int]$a.Antes_Processos; Fim = $d.Processos }
@@ -486,6 +522,8 @@ function Show-Comparacao {
     foreach ($i in $itens) {
         if ($i.Ini -gt 0) {
             $pct = [math]::Round((($i.Ini - $i.Fim) / $i.Ini) * 100)
+            # limpeza nao aumenta carga: se "aumentou", e ruido de medicao -> tratamos como igual
+            if ($pct -lt 0) { $pct = 0; $i.Fim = $i.Ini }
             $i.Pct = $pct
             if ($pct -gt 0) { $reducoes += $pct }
         } else { $i.Pct = 0 }
@@ -545,6 +583,78 @@ function Show-Comparacao {
     [void]$w.ShowDialog($form)
 }
 
+# Mostra quanto o Windows ficou MAIS PESADO ao reativar (desfazer a limpeza).
+function Show-Restauracao {
+    $CW = 'HKLM:\SOFTWARE\CleanWindows'
+    $flag = try { (Get-ItemProperty $CW -Name MostrarRestauracao -ErrorAction Stop).MostrarRestauracao } catch { 0 }
+    if ($flag -ne 1) { return }
+    $r = try { Get-ItemProperty $CW -ErrorAction Stop } catch { $null }
+    if (-not $r -or $null -eq $r.R_Limpo_Processos) { return }
+
+    $itens = @(
+        @{ Rot = 'Processos em segundo plano'; L = [int]$r.R_Limpo_Processos; P = [int]$r.R_Pesado_Processos }
+        @{ Rot = 'RAM em uso (ociosa)';        L = [int]$r.R_Limpo_RamMB;     P = [int]$r.R_Pesado_RamMB; Un = ' MB' }
+        @{ Rot = 'Servicos em execucao';       L = [int]$r.R_Limpo_Servicos;  P = [int]$r.R_Pesado_Servicos }
+        @{ Rot = 'Tarefas agendadas ativas';   L = [int]$r.R_Limpo_Tarefas;   P = [int]$r.R_Pesado_Tarefas }
+        @{ Rot = 'Apps instalados';            L = [int]$r.R_Limpo_Appx;      P = [int]$r.R_Pesado_Appx }
+    )
+    $aumentos = @()
+    foreach ($i in $itens) {
+        if ($i.L -gt 0) { $i.Pct = [math]::Round((($i.P - $i.L) / $i.L) * 100); if ($i.Pct -gt 0) { $aumentos += $i.Pct } }
+        else { $i.Pct = 0 }
+    }
+    $geral = if ($aumentos.Count) { [math]::Round(($aumentos | Measure-Object -Average).Average) } else { 0 }
+
+    $w = New-Object System.Windows.Forms.Form
+    $w.Text = 'Windows reativado (padrao) - Clean Windows'
+    $w.ClientSize = New-Object System.Drawing.Size(560, 400)
+    $w.StartPosition = 'CenterScreen'; $w.FormBorderStyle = 'FixedDialog'; $w.MaximizeBox = $false; $w.MinimizeBox = $false
+    $w.BackColor = [System.Drawing.Color]::White
+
+    $h = New-Object System.Windows.Forms.Label
+    $h.Text = "Ao reativar, o Windows ficou ~$geral% mais pesado"
+    $h.Font = New-Object System.Drawing.Font('Segoe UI', 14, [System.Drawing.FontStyle]::Bold)
+    $h.ForeColor = [System.Drawing.Color]::FromArgb(0xC6, 0x28, 0x28)
+    $h.Location = New-Object System.Drawing.Point(24, 20); $h.Size = New-Object System.Drawing.Size(520, 32)
+    $w.Controls.Add($h)
+
+    $s2 = New-Object System.Windows.Forms.Label
+    $s2.Text = 'De volta ao padrao do Windows (limpo -> reativado):'
+    $s2.ForeColor = [System.Drawing.Color]::FromArgb(96, 96, 96)
+    $s2.Location = New-Object System.Drawing.Point(24, 56); $s2.Size = New-Object System.Drawing.Size(520, 20)
+    $w.Controls.Add($s2)
+
+    $lv = New-Object System.Windows.Forms.ListView
+    $lv.View = 'Details'; $lv.FullRowSelect = $true; $lv.GridLines = $true; $lv.HeaderStyle = 'Nonclickable'
+    $lv.Location = New-Object System.Drawing.Point(24, 84); $lv.Size = New-Object System.Drawing.Size(512, 232)
+    [void]$lv.Columns.Add('Indicador', 250)
+    [void]$lv.Columns.Add('Limpo', 80, 'Center')
+    [void]$lv.Columns.Add('Reativado', 90, 'Center')
+    [void]$lv.Columns.Add('Aumento', 80, 'Center')
+    foreach ($i in $itens) {
+        $un = if ($i.Un) { $i.Un } else { '' }
+        $row = New-Object System.Windows.Forms.ListViewItem($i.Rot)
+        [void]$row.SubItems.Add("$($i.L)$un"); [void]$row.SubItems.Add("$($i.P)$un")
+        [void]$row.SubItems.Add($(if ($i.Pct -gt 0) { "+$($i.Pct)%" } elseif ($i.Pct -lt 0) { "-$([math]::Abs($i.Pct))%" } else { '~' }))
+        [void]$lv.Items.Add($row)
+    }
+    $w.Controls.Add($lv)
+
+    $n = New-Object System.Windows.Forms.Label
+    $n.Text = 'Apos reiniciar, o Windows volta a carregar todos esses itens. Para voltar a limpar, use "Limpar ESTE Windows".'
+    $n.ForeColor = [System.Drawing.Color]::FromArgb(120, 120, 120); $n.Font = New-Object System.Drawing.Font('Segoe UI', 8)
+    $n.Location = New-Object System.Drawing.Point(24, 322); $n.Size = New-Object System.Drawing.Size(512, 34)
+    $w.Controls.Add($n)
+
+    $ok = New-Object System.Windows.Forms.Button
+    $ok.Text = 'Fechar'; $ok.Location = New-Object System.Drawing.Point(456, 362); $ok.Size = New-Object System.Drawing.Size(80, 28)
+    $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $w.Controls.Add($ok); $w.AcceptButton = $ok
+
+    try { Set-ItemProperty -Path $CW -Name MostrarRestauracao -Value 0 -ErrorAction SilentlyContinue } catch {}
+    [void]$w.ShowDialog($form)
+}
+
 function Test-Atualizacao {
     if (-not $RepoUpdate) { return }
     try {
@@ -588,6 +698,6 @@ function Test-Atualizacao {
         }
     } catch { $form.Cursor = 'Default' }   # offline / limite de API: silencioso
 }
-$form.Add_Shown({ Test-Atualizacao; Show-Comparacao })
+$form.Add_Shown({ Test-Atualizacao; Show-Comparacao; Show-Restauracao })
 
 [void]$form.ShowDialog()

@@ -30,7 +30,7 @@ done
 [ -d "$DEST" ] && [ -w "$DEST" ] || { echo "pasta nao existe ou sem permissao de escrita: $DEST"; exit 1; }
 [ -f "$ISO" ] || { echo "ISO nao encontrada: $ISO"; exit 1; }
 [ -d "$DEST/ventoy" ] || [ -f "$DEST/../VTOYEFI" ] || echo "AVISO: $DEST nao parece uma particao Ventoy (sem pasta ventoy/). Continuando mesmo assim."
-for f in autounattend.xml freedom-tweaks.ps1 freedom-watch.ps1 apps.ps1 verify.ps1; do [ -f "$HERE/$f" ] || { echo "falta $f ao lado do script"; exit 1; }; done
+for f in autounattend.xml freedom-tweaks.ps1 freedom-watch.ps1 freedom-restore.ps1 apps.ps1 verify.ps1; do [ -f "$HERE/$f" ] || { echo "falta $f ao lado do script"; exit 1; }; done
 
 ISONAME="$(basename "$ISO")"
 echo "==> ISO: $ISONAME"
@@ -43,7 +43,7 @@ fi
 
 echo "==> Kit (autounattend.xml, Scripts, \$OEM\$)"
 mkdir -p "$DEST/Scripts" "$DEST/\$OEM\$/\$\$/Setup/Scripts" "$DEST/ventoy"
-for f in freedom-tweaks.ps1 freedom-watch.ps1 apps.ps1 verify.ps1; do
+for f in freedom-tweaks.ps1 freedom-watch.ps1 freedom-restore.ps1 apps.ps1 verify.ps1; do
     cp "$HERE/$f" "$DEST/Scripts/$f"
     cp "$HERE/$f" "$DEST/\$OEM\$/\$\$/Setup/Scripts/$f"
 done

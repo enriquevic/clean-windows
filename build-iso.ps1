@@ -124,7 +124,7 @@ if (-not $isAdmin) { throw "Execute o PowerShell como Administrador." }
 if (-not (Test-Path $IsoPath)) { throw "ISO nao encontrada: $IsoPath" }
 if ($WorkDir -match '\s') { Write-Warning "WorkDir contem espacos; o oscdimg pode falhar. Prefira algo como C:\WinGamingBuild" }
 
-foreach ($f in 'autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'apps.ps1', 'verify.ps1') {
+foreach ($f in 'autounattend.xml', 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1') {
     if (-not (Test-Path (Join-Path $ScriptDir $f))) { throw "Arquivo do kit nao encontrado ao lado do script: $f" }
 }
 
@@ -335,7 +335,7 @@ Step "Copiando autounattend.xml e scripts para a midia"
 Copy-Item (Join-Path $ScriptDir 'autounattend.xml') (Join-Path $Src 'autounattend.xml') -Force
 $oem = Join-Path $sources '$OEM$\$$\Setup\Scripts'
 New-Item -ItemType Directory -Force -Path $oem | Out-Null
-foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'apps.ps1', 'verify.ps1') {
+foreach ($f in 'freedom-tweaks.ps1', 'freedom-watch.ps1', 'freedom-restore.ps1', 'apps.ps1', 'verify.ps1') {
     Copy-Item (Join-Path $ScriptDir $f) $oem -Force
 }
 Ok "Arquivos copiados"

@@ -195,6 +195,10 @@ function Disable-Svc([string]$name) {
     $s = Get-Service -Name $name -ErrorAction SilentlyContinue
     if (-not $s) { return }
     try {
+        if (-not $script:SvcOrig.ContainsKey($name)) {
+            $sm = (Get-CimInstance Win32_Service -Filter "Name='$name'" -ErrorAction SilentlyContinue).StartMode
+            if ($sm) { $script:SvcOrig[$name] = $sm }   # Auto / Manual / Disabled
+        }
         Stop-Service -Name $name -Force -ErrorAction SilentlyContinue
         Set-Service -Name $name -StartupType Disabled -ErrorAction Stop
         Log "  servico desabilitado: $name"
@@ -233,6 +237,8 @@ function Get-Metricas {
 
 Log "freedom-tweaks.ps1 iniciado por $env:USERNAME em $env:COMPUTERNAME" 'Green'
 $P = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows'
+$script:SvcOrig = @{}          # estado original dos servicos, para o Reativar restaurar
+$script:AppsRemovidos = @()    # apps que este script removeu
 
 # ---- Medicao ANTES (para o programa mostrar a comparacao de leveza depois) ----
 if ($Cfg.MedirDesempenho) {
@@ -381,11 +387,11 @@ if ($Cfg.RemoveBloatApps) {
     $list = $BloatApps
     if (-not $Cfg.KeepXboxApps) { $list += $XboxApps }
     foreach ($pkg in (Get-AppxPackage -AllUsers | Where-Object { $list -contains $_.Name })) {
-        try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop; Log "  removido: $($pkg.Name)" }
+        try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop; $script:AppsRemovidos += $pkg.Name; Log "  removido: $($pkg.Name)" }
         catch { Log "  ! $($pkg.Name): $($_.Exception.Message)" 'Yellow' }
     }
     foreach ($prov in (Get-AppxProvisionedPackage -Online | Where-Object { $list -contains $_.DisplayName })) {
-        try { Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -ErrorAction Stop | Out-Null; Log "  desprovisionado: $($prov.DisplayName)" }
+        try { Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -ErrorAction Stop | Out-Null; $script:AppsRemovidos += $prov.DisplayName; Log "  desprovisionado: $($prov.DisplayName)" }
         catch { Log "  ! $($prov.DisplayName): $($_.Exception.Message)" 'Yellow' }
     }
 }
@@ -674,6 +680,29 @@ if ($Cfg.AutoReapplyAfterUpdate) {
 # ===================================================================================
 #  Fim
 # ===================================================================================
+# Guarda o estado original para o botao "Reativar" (freedom-restore.ps1)
+try {
+    $CW2 = 'HKLM:\SOFTWARE\CleanWindows'
+    if ($script:SvcOrig.Count) {
+        $txt = ($script:SvcOrig.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ';'
+        Set-Reg $CW2 ServicosOriginais $txt 'String'
+    }
+    if ($script:AppsRemovidos.Count) {
+        Set-Reg $CW2 AppsRemovidos (($script:AppsRemovidos | Select-Object -Unique) -join ';') 'String'
+    }
+    Set-Reg $CW2 LimpezaAplicada 1
+    # metricas do estado LIMPO (referencia para o Reativar comparar)
+    if ($Cfg.MedirDesempenho) {
+        $mL = Get-Metricas
+        Set-Reg $CW2 Limpo_Processos $mL.Processos
+        Set-Reg $CW2 Limpo_RamMB     $mL.RamUsoMB
+        Set-Reg $CW2 Limpo_Servicos  $mL.Servicos
+        Set-Reg $CW2 Limpo_Appx      $mL.Appx
+        Set-Reg $CW2 Limpo_Tarefas   $mL.Tarefas
+        Set-Reg $CW2 Limpo_Inicio    $mL.Inicio
+    }
+} catch { Log "  ! nao consegui salvar o estado para o Reativar: $($_.Exception.Message)" 'Yellow' }
+
 Set-Content -Path (Join-Path $LogDir 'freedom-tweaks.applied') -Value (Get-Date -Format 's') -ErrorAction SilentlyContinue
 Log "Concluido. Reinicie para aplicar tudo (VBS, HAGS, servicos)." 'Green'
 
