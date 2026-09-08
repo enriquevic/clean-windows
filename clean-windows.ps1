@@ -244,10 +244,20 @@ $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.Color]::White
 
+# Conteudo vai num painel com rolagem (encolhe em telas menores / com escala de tela alta);
+# a barra de botoes (Feedback/Apoiar/Sair) fica FORA dele, ancorada na base, sempre visivel.
+$body = New-Object System.Windows.Forms.Panel
+$body.Location = New-Object System.Drawing.Point(0, 0)
+$body.Size = New-Object System.Drawing.Size(660, 512)
+$body.Anchor = 'Top,Bottom,Left,Right'
+$body.AutoScroll = $true
+$body.BackColor = [System.Drawing.Color]::White
+$form.Controls.Add($body)
+
 function Add-Ctl($ctl, $x, $y, $w, $h) {
     $ctl.Location = New-Object System.Drawing.Point($x, $y)
     $ctl.Size     = New-Object System.Drawing.Size($w, $h)
-    $form.Controls.Add($ctl); $ctl
+    $body.Controls.Add($ctl); $ctl
 }
 function New-Text($txt, $x, $y, $w, $h, $size, $style, $color) {
     $l = New-Object System.Windows.Forms.Label
@@ -309,7 +319,14 @@ $btnReativar.Enabled = ($limpezaAplicada -eq 1)
               else { "Disponivel depois de usar 'Limpar ESTE Windows'." }) `
         48 422 580 20 8 ([System.Drawing.FontStyle]::Regular) $gray)
 
-$lblFoot = New-Text '' 30 500 600 20 8 ([System.Drawing.FontStyle]::Regular) $gray
+# --- barra inferior: fica no FORM (fora do painel), ancorada na base, sempre visivel ---
+$lblFoot = New-Object System.Windows.Forms.Label
+$lblFoot.Font = New-Object System.Drawing.Font('Segoe UI', 8)
+$lblFoot.ForeColor = $gray
+$lblFoot.Location = New-Object System.Drawing.Point(30, 514)
+$lblFoot.Size = New-Object System.Drawing.Size(600, 14)
+$lblFoot.Anchor = 'Bottom,Left'
+$form.Controls.Add($lblFoot)
 if ($AllowFixedDisk) {
     $lblFoot.Text = 'MODO DE TESTE: a tela do pendrive lista tambem discos internos.'
     $lblFoot.ForeColor = [System.Drawing.Color]::Firebrick
@@ -319,16 +336,22 @@ if ($AllowFixedDisk) {
 
 $btnFeed = New-Object System.Windows.Forms.Button
 $btnFeed.Text = 'Feedback'
-[void](Add-Ctl $btnFeed 30 522 130 30)
+$btnFeed.Location = New-Object System.Drawing.Point(30, 528); $btnFeed.Size = New-Object System.Drawing.Size(130, 30)
+$btnFeed.Anchor = 'Bottom,Left'
+$form.Controls.Add($btnFeed)
 
 $btnDoar = New-Object System.Windows.Forms.Button
 $btnDoar.Text = 'Apoiar o projeto'
-[void](Add-Ctl $btnDoar 168 522 150 30)
+$btnDoar.Location = New-Object System.Drawing.Point(168, 528); $btnDoar.Size = New-Object System.Drawing.Size(150, 30)
+$btnDoar.Anchor = 'Bottom,Left'
+$form.Controls.Add($btnDoar)
 if (-not $ChavePix -and -not $UrlDonativo) { $btnDoar.Enabled = $false }
 
 $btnSair = New-Object System.Windows.Forms.Button
 $btnSair.Text = 'Sair'
-[void](Add-Ctl $btnSair 550 522 80 30)
+$btnSair.Location = New-Object System.Drawing.Point(550, 528); $btnSair.Size = New-Object System.Drawing.Size(80, 30)
+$btnSair.Anchor = 'Bottom,Right'
+$form.Controls.Add($btnSair)
 $btnSair.Add_Click({ $form.Close() })
 
 # --- Feedback: abre o programa de e-mail do usuario com a mensagem ja comecada ---
@@ -712,5 +735,12 @@ function Test-Atualizacao {
     } catch { $form.Cursor = 'Default' }   # offline / limite de API: silencioso
 }
 $form.Add_Shown({ Test-Atualizacao; Show-Comparacao; Show-Restauracao })
+
+# Cabe em telas menores / com escala de tela alta: se a janela passar da area util, encolhe
+# (o painel de conteudo rola e a barra de botoes fica ancorada na base, sempre visivel).
+try {
+    $wa = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea.Height
+    if ($form.Height -gt $wa) { $form.Height = $wa }
+} catch {}
 
 [void]$form.ShowDialog()
