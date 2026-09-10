@@ -58,7 +58,7 @@ if (-not $SemExe) {
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
     if (-not $csc) {
-        Aviso 'csc.exe nao encontrado (.NET Framework 4 ausente). Use o clean-windows.cmd.'
+        Aviso 'csc.exe nao encontrado (.NET Framework 4 ausente). Use o Setup.cmd.'
     } else {
         $src  = Join-Path $Dir 'CleanWindowsLauncher.cs'
         $man  = Join-Path $Dir 'CleanWindows.manifest'

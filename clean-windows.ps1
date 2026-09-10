@@ -7,7 +7,7 @@
     1) Limpar ESTE Windows        -> roda o freedom-tweaks.ps1 na maquina atual
     2) Criar pendrive de instalacao -> abre o criar-pendrive.ps1 (Windows do zero)
 
-  Uso: duplo clique em clean-windows.cmd
+  Uso: duplo clique em Setup.cmd
        ou: powershell -ep bypass -sta -f clean-windows.ps1  [-AllowFixedDisk]
 
   -AllowFixedDisk so serve para testar dentro de uma VM: faz a tela do pendrive listar
@@ -20,10 +20,10 @@ param([switch]$AllowFixedDisk)
 # ===================================================================================
 #  CONFIGURACAO DO AUTOR  -  preencha aqui e nada mais precisa mudar
 # ===================================================================================
-$Versao = '1.4'
+$Versao = '1.5'
 
-# Para onde vai o feedback dos usuarios (abre o programa de e-mail da pessoa).
-$EmailFeedback = 'roothub.softwares@gmail.com'
+# Para onde vai o feedback dos usuarios (mostra o e-mail para copiar e tenta abrir o programa de e-mail).
+$EmailFeedback = 'enrique.enol@gmail.com'
 
 # Chave Pix (CPF, e-mail, telefone ou aleatoria). Deixe '' para esconder a opcao Pix.
 $ChavePix = '992ffd12-4fa7-407e-bde9-204ac017c16a'
@@ -370,30 +370,79 @@ $btnSair.Anchor = 'Bottom,Right'
 $form.Controls.Add($btnSair)
 $btnSair.Add_Click({ $form.Close() })
 
-# --- Feedback: abre o programa de e-mail do usuario com a mensagem ja comecada ---
+# --- Feedback: mostra o e-mail para copiar e tenta abrir o programa de e-mail ja preenchido ---
+# Como o Clean Windows remove o app de e-mail do Windows, "Abrir programa de e-mail" (mailto)
+# pode cair no navegador (Gmail/Outlook web) ou nao ter para onde ir. Por isso o botao "Copiar
+# e-mail" e o caminho garantido: a pessoa cola no e-mail dela e escreve.
 $btnFeed.Add_Click({
     $so = try {
         $cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -ErrorAction Stop
         "$($cv.ProductName) $($cv.DisplayVersion) (build $($cv.CurrentBuildNumber).$($cv.UBR))"
     } catch { 'Windows' }
-
-    $assunto = "Clean Windows $Versao - Feedback"
+    $assunto = 'Sobre o Clean-Windows'
     $corpo   = "Escreva abaixo seu elogio, reclamacao ou sugestao:" + [Environment]::NewLine +
                [Environment]::NewLine + [Environment]::NewLine +
                "----------------------------------------" + [Environment]::NewLine +
-               "Clean Windows $Versao" + [Environment]::NewLine +
-               "Sistema: $so" + [Environment]::NewLine +
-               "(estas duas linhas ajudam a entender o problema; apague se preferir)"
-
+               "Clean Windows $Versao - Sistema: $so"
     Add-Type -AssemblyName System.Web -ErrorAction SilentlyContinue
     $enc = { param($t) [System.Uri]::EscapeDataString($t) }
     $url = "mailto:$EmailFeedback" + "?subject=" + (& $enc $assunto) + "&body=" + (& $enc $corpo)
-    try { Start-Process $url }
-    catch {
-        [void][System.Windows.Forms.MessageBox]::Show($form,
-            "Nao consegui abrir seu programa de e-mail.`n`nMande sua mensagem para:`n$EmailFeedback",
-            'Feedback', 'OK', 'Information')
-    }
+
+    $d = New-Object System.Windows.Forms.Form
+    $d.Text = 'Feedback - Clean Windows'
+    $d.ClientSize = New-Object System.Drawing.Size(470, 210)
+    $d.StartPosition = 'CenterParent'; $d.FormBorderStyle = 'FixedDialog'
+    $d.MaximizeBox = $false; $d.MinimizeBox = $false
+    $d.BackColor = [System.Drawing.Color]::White
+
+    $t1 = New-Object System.Windows.Forms.Label
+    $t1.Text = 'Mande seu feedback'
+    $t1.Font = New-Object System.Drawing.Font('Segoe UI', 12, [System.Drawing.FontStyle]::Bold)
+    $t1.Location = New-Object System.Drawing.Point(20, 16); $t1.Size = New-Object System.Drawing.Size(430, 26)
+    $d.Controls.Add($t1)
+
+    $t2 = New-Object System.Windows.Forms.Label
+    $t2.Text = 'Elogio, problema ou sugestao? Copie o e-mail abaixo e escreva pra gente. Obrigado!'
+    $t2.ForeColor = [System.Drawing.Color]::FromArgb(96, 96, 96)
+    $t2.Location = New-Object System.Drawing.Point(20, 46); $t2.Size = New-Object System.Drawing.Size(430, 36)
+    $d.Controls.Add($t2)
+
+    $bc = New-Object System.Windows.Forms.Button
+    $bc.Text = 'Copiar e-mail'
+    $bc.Location = New-Object System.Drawing.Point(20, 92); $bc.Size = New-Object System.Drawing.Size(150, 34)
+    $bc.Add_Click({
+        try {
+            Set-Clipboard -Value $EmailFeedback
+            [void][System.Windows.Forms.MessageBox]::Show($d, "E-mail copiado:`n`n$EmailFeedback`n`nCole no seu programa de e-mail e escreva a mensagem.", 'Feedback', 'OK', 'Information')
+        } catch {
+            [void][System.Windows.Forms.MessageBox]::Show($d, "Mande sua mensagem para:`n`n$EmailFeedback", 'Feedback', 'OK', 'Information')
+        }
+    }.GetNewClosure())
+    $d.Controls.Add($bc)
+
+    $le = New-Object System.Windows.Forms.TextBox
+    $le.Text = $EmailFeedback; $le.ReadOnly = $true
+    $le.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+    $le.Location = New-Object System.Drawing.Point(182, 96); $le.Size = New-Object System.Drawing.Size(268, 26)
+    $d.Controls.Add($le)
+
+    $bo = New-Object System.Windows.Forms.Button
+    $bo.Text = 'Abrir programa de e-mail'
+    $bo.Location = New-Object System.Drawing.Point(20, 136); $bo.Size = New-Object System.Drawing.Size(430, 34)
+    $bo.Add_Click({
+        try { Start-Process $url }
+        catch { [void][System.Windows.Forms.MessageBox]::Show($d, "Nao encontrei um programa de e-mail. Use 'Copiar e-mail' e escreva para:`n`n$EmailFeedback", 'Feedback', 'OK', 'Information') }
+    }.GetNewClosure())
+    $d.Controls.Add($bo)
+
+    $bf = New-Object System.Windows.Forms.Button
+    $bf.Text = 'Fechar'
+    $bf.Location = New-Object System.Drawing.Point(370, 176); $bf.Size = New-Object System.Drawing.Size(80, 28)
+    $bf.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $d.Controls.Add($bf)
+    $d.AcceptButton = $bf; $d.CancelButton = $bf
+
+    [void]$d.ShowDialog($form)
 })
 
 # --- Apoiar: Pix (copia a chave) e/ou pagina de doacao ---

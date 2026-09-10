@@ -2,7 +2,7 @@
   <img src="CleanWindows-preview.png" width="140" alt="Clean Windows">
 </p>
 
-# Clean Windows 1.4
+# Clean Windows 1.5
 
 Monte a **sua** edição enxuta do Windows 11, a partir da ISO **oficial da Microsoft**:
 sem bloatware, sem telemetria, sem Copilot/Recall/Widgets/OneDrive, com os ajustes de
@@ -13,7 +13,7 @@ Dá para usar de dois jeitos:
 - **Limpar o Windows que já está instalado** nesta máquina (nada é formatado); ou
 - **Criar um pendrive** que instala um Windows 11 já limpo do zero em qualquer PC.
 
-> **Baixar:** pegue o `clean-windows-1.4.zip` na aba **[Releases](../../releases)**, extraia
+> **Baixar:** pegue o `clean-windows-1.5.zip` na aba **[Releases](../../releases)**, extraia
 > numa pasta e siga o passo a passo abaixo.
 
 ## O que voce ganha
@@ -37,7 +37,7 @@ protecao nao e desativada.
 
 ## Como começar
 
-1. Extraia o `clean-windows-1.4.zip` numa pasta (ex.: `C:\Clean Windows`).
+1. Extraia o `clean-windows-1.5.zip` numa pasta (ex.: `C:\Clean Windows`).
 2. Dê **dois cliques em `preparar.cmd`** — só na primeira vez. Ele desbloqueia os arquivos
    e cria o **`CleanWindows.exe`** (usando o compilador que já vem no Windows; nada é baixado).
 3. Dê **dois cliques em `CleanWindows.exe`**. Abre um menu com duas opções:
@@ -47,7 +47,7 @@ protecao nao e desativada.
 | **Limpar ESTE Windows** | Aplica os ajustes no Windows já instalado. Nada é formatado; seus arquivos e programas continuam onde estão. |
 | **Criar pendrive de instalação** | Grava um pendrive para instalar o Windows 11 já limpo em qualquer PC. **O pendrive é apagado.** |
 
-Se preferir não gerar o `.exe`, o `clean-windows.cmd` faz o mesmo (mostrando uma janela
+Se preferir não gerar o `.exe`, o `Setup.cmd` faz o mesmo (mostrando uma janela
 de terminal por um instante).
 
 ---
@@ -151,7 +151,7 @@ Sem o aceite, nada é executado.
 
 ## Atualizações automáticas
 
-Toda vez que o `CleanWindows.exe` (ou o `clean-windows.cmd`) abre, ele pergunta ao GitHub
+Toda vez que o `CleanWindows.exe` (ou o `Setup.cmd`) abre, ele pergunta ao GitHub
 qual é a última versão publicada. Se houver uma **Release mais nova** que a instalada, aparece
 "Nova versão X disponível — baixar agora?". Se a pessoa disser **Sim**, ele baixa o `.zip` da
 Release, extrai na pasta Downloads e abre a pasta — aí é só rodar o `preparar.cmd` e o
